@@ -33,7 +33,10 @@ def main():
         ("/api/stocks/HDFCBANK.NS/indicators?period=6mo", "Technical Indicators (HDFC Bank - SMA, EMA, RSI, MACD)"),
         ("/api/watchlist", "Watchlist CRUD"),
         ("/api/portfolio", "Portfolio Analytics & Holdings"),
-        ("/api/alerts", "Price Alerts Engine")
+        ("/api/alerts", "Price Alerts Engine"),
+        ("/api/ml/models", "ML Model Architectures & Feature Definitions"),
+        ("/api/ml/predict/RELIANCE.NS", "ML Out-of-Sample Price & Direction Prediction"),
+        ("/api/ml/evaluate/RELIANCE.NS", "ML Model Comparison (Random Forest vs XGBoost vs Baseline)")
     ]
 
     try:
@@ -58,7 +61,7 @@ def main():
 
         print("Server is UP and HEALTHY! Testing endpoints:\n")
         all_passed = True
-        with httpx.Client(base_url=base_url, timeout=10.0) as client:
+        with httpx.Client(base_url=base_url, timeout=30.0) as client:
             for path, desc in endpoints:
                 try:
                     response = client.get(path)
@@ -67,10 +70,21 @@ def main():
                         print(f" [PASS] ({status}) {desc} -> {path}")
                         if path == "/api/health":
                             h_data = response.json()
-                            print(f"        -> Database status: {h_data['database']['status']}")
-                            print(f"        -> Database type: {h_data['database']['database_type']}")
+                            print(f"        -> Database status: {h_data['database']['status']} ({h_data['database']['database_type']})")
                             print(f"        -> Connectivity: {h_data['database']['connectivity_result']}")
-                            print(f"        -> Verified tables: {h_data['database']['verified_tables']}")
+                        elif "/api/ml/predict/" in path:
+                            p_data = response.json()
+                            print(f"        -> Consensus Direction: {p_data['consensus_predicted_direction']} | Target: INR {p_data['consensus_predicted_price']}")
+                            print(f"        -> Confidence: {p_data['confidence_level']}")
+                        elif "/api/ml/evaluate/" in path:
+                            e_data = response.json()
+                            rf_m = e_data['models']['random_forest']['test_metrics']
+                            xgb_m = e_data['models']['xgboost']['test_metrics']
+                            base_m = e_data['models']['persistence_baseline']['test_metrics']
+                            print(f"        -> Baseline MAE: {base_m['mae']} | DA: {base_m['directional_accuracy']}%")
+                            print(f"        -> Random Forest MAE: {rf_m['mae']} | DA: {rf_m['directional_accuracy']}%")
+                            print(f"        -> XGBoost MAE: {xgb_m['mae']} | DA: {xgb_m['directional_accuracy']}%")
+                            print(f"        -> Best Model by MAE: {e_data['best_model_by_mae']}")
                     else:
                         print(f" [FAIL] ({status}) {desc} -> {path}")
                         all_passed = False
@@ -79,7 +93,7 @@ def main():
                     all_passed = False
 
         if all_passed:
-            print("\n ALL API ENDPOINTS VERIFIED SUCCESSFULLY!")
+            print("\n ALL API & ML ENDPOINTS VERIFIED SUCCESSFULLY!")
         else:
             print("\n SOME ENDPOINTS FAILED.")
             sys.exit(1)

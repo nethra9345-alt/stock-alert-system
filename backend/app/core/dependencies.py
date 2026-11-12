@@ -48,3 +48,4 @@ def get_current_user(
 
     user = db.query(User).filter(User.id == 1).first()
     return user
+

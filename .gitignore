@@ -62,3 +62,8 @@ desktop.ini
 logs/
 *.log
 
+
+# ML Model Artifacts
+*.joblib
+backend/app/ml/artifacts/*
+!backend/app/ml/artifacts/.gitkeep

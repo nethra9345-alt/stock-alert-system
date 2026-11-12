@@ -262,3 +262,4 @@ def test_user_data_isolation():
 
     session.close()
     engine.dispose()
+
