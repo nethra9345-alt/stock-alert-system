@@ -44,3 +44,4 @@ class MarketEvent(Base):
     __table_args__ = (
         UniqueConstraint("symbol", "event_type", "event_date", name="uq_symbol_event_date_type"),
     )
+

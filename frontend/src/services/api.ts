@@ -9,7 +9,12 @@ import {
   WatchlistItem,
   PortfolioOverview,
   PortfolioTransaction,
+  PortfolioAnalytics,
+  PortfolioRiskAnalysis,
   PriceAlert,
+  AlertHistoryItem,
+  AlertPreferences,
+  AlertEvaluateResponse,
   StockPredictionResponse,
   ModelComparisonResponse,
   ModelInfoResponse
@@ -106,6 +111,28 @@ export const portfolioApi = {
     return res.data;
   },
 
+  getAnalytics: async (): Promise<PortfolioAnalytics> => {
+    const res = await api.get<PortfolioAnalytics>('/portfolio/analytics');
+    return res.data;
+  },
+
+  getPerformance: async (): Promise<any> => {
+    const res = await api.get('/portfolio/performance');
+    return res.data;
+  },
+
+  getAllocation: async (): Promise<any> => {
+    const res = await api.get('/portfolio/allocation');
+    return res.data;
+  },
+
+  getRisk: async (period: string = '6mo'): Promise<PortfolioRiskAnalysis> => {
+    const res = await api.get<PortfolioRiskAnalysis>('/portfolio/risk', {
+      params: { period },
+    });
+    return res.data;
+  },
+
   getTransactions: async (): Promise<PortfolioTransaction[]> => {
     const res = await api.get<PortfolioTransaction[]>('/portfolio/transactions');
     return res.data;
@@ -154,6 +181,38 @@ export const alertsApi = {
 
   deleteAlert: async (id: number): Promise<{ status: string; message: string }> => {
     const res = await api.delete<{ status: string; message: string }>(`/alerts/${id}`);
+    return res.data;
+  },
+
+  getHistory: async (status?: string, limit: number = 50): Promise<AlertHistoryItem[]> => {
+    const res = await api.get<AlertHistoryItem[]>('/alerts/history', {
+      params: { status, limit },
+    });
+    return res.data;
+  },
+
+  acknowledgeAlert: async (id: number): Promise<AlertHistoryItem> => {
+    const res = await api.post<AlertHistoryItem>(`/alerts/history/${id}/acknowledge`);
+    return res.data;
+  },
+
+  resolveAlert: async (id: number): Promise<AlertHistoryItem> => {
+    const res = await api.post<AlertHistoryItem>(`/alerts/history/${id}/resolve`);
+    return res.data;
+  },
+
+  getPreferences: async (): Promise<AlertPreferences> => {
+    const res = await api.get<AlertPreferences>('/alerts/preferences');
+    return res.data;
+  },
+
+  updatePreferences: async (data: Partial<AlertPreferences>): Promise<AlertPreferences> => {
+    const res = await api.put<AlertPreferences>('/alerts/preferences', data);
+    return res.data;
+  },
+
+  evaluateAlerts: async (): Promise<AlertEvaluateResponse> => {
+    const res = await api.post<AlertEvaluateResponse>('/alerts/evaluate');
     return res.data;
   },
 };

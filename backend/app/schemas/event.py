@@ -52,3 +52,4 @@ class AnalyzeEventsResponse(BaseModel):
     detected_events_count: int
     newly_persisted_count: int
     events: List[MarketEventRead]
+

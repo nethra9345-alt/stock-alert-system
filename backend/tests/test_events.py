@@ -233,3 +233,4 @@ def test_events_api_endpoints():
     assert "event_type" in latest
     assert "severity" in latest
     assert "explanation_summary" in latest
+

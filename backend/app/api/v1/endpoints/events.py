@@ -194,3 +194,4 @@ def analyze_and_detect_events(
         newly_persisted_count=newly_persisted,
         events=all_events
     )
+

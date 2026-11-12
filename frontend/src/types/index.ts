@@ -290,3 +290,124 @@ export interface AnalyzeEventsResponse {
   newly_persisted_count: number;
   events: MarketEvent[];
 }
+
+export interface HoldingPerformance {
+  symbol: string;
+  company_name?: string;
+  exchange: string;
+  total_quantity: number;
+  avg_buy_price: number;
+  invested_value: number;
+  current_price: number;
+  current_value: number;
+  unrealized_pnl: number;
+  unrealized_pnl_percent: number;
+  realized_pnl: number;
+  portfolio_weight_pct: number;
+}
+
+export interface StockAllocation {
+  symbol: string;
+  company_name?: string;
+  current_value: number;
+  weight_pct: number;
+}
+
+export interface PortfolioAnalytics {
+  accounting_methodology: string;
+  total_invested: number;
+  current_portfolio_value: number;
+  realized_pnl: number;
+  unrealized_pnl: number;
+  total_pnl: number;
+  overall_return_percent: number;
+  active_holdings_count: number;
+  holdings: HoldingPerformance[];
+  allocations: StockAllocation[];
+}
+
+export interface StockVolatilityItem {
+  symbol: string;
+  weight_pct: number;
+  annualized_volatility_pct: number;
+  daily_volatility_pct: number;
+}
+
+export interface PortfolioRiskConcentration {
+  top_holding_symbol?: string;
+  top_holding_weight_pct: number;
+  top_3_weight_pct: number;
+  hhi: number;
+  effective_n: number;
+  classification: string;
+  thresholds?: any;
+}
+
+export interface PortfolioRiskVolatility {
+  annualized_portfolio_volatility_pct: number;
+  daily_portfolio_volatility_pct: number;
+  classification: string;
+  stock_volatilities: StockVolatilityItem[];
+  thresholds?: any;
+}
+
+export interface PortfolioRiskDrawdown {
+  maximum_drawdown_pct: number;
+  peak_date?: string;
+  trough_date?: string;
+  classification: string;
+  thresholds?: any;
+}
+
+export interface PortfolioRiskAnalysis {
+  is_empty: boolean;
+  insufficient_data?: boolean;
+  message?: string;
+  risk_score: number;
+  risk_level: string;
+  concentration: PortfolioRiskConcentration;
+  volatility: PortfolioRiskVolatility;
+  drawdown: PortfolioRiskDrawdown;
+  benchmark_beta?: number | null;
+  has_benchmark: boolean;
+  benchmark_symbol?: string | null;
+  sessions_analyzed: number;
+  disclaimer: string;
+}
+
+export interface AlertHistoryItem {
+  id: number;
+  user_id: number;
+  alert_id?: number | null;
+  symbol?: string | null;
+  alert_type: string;
+  severity: string;
+  title: string;
+  message: string;
+  trigger_value?: number | null;
+  threshold_value?: number | null;
+  status: 'TRIGGERED' | 'ACKNOWLEDGED' | 'RESOLVED';
+  created_at: string;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+}
+
+export interface AlertPreferences {
+  id: number;
+  user_id: number;
+  price_alerts_enabled: boolean;
+  portfolio_alerts_enabled: boolean;
+  market_event_alerts_enabled: boolean;
+  volume_spike_alerts_enabled: boolean;
+  min_price_change_pct: number;
+  portfolio_loss_threshold_pct: number;
+  portfolio_drawdown_threshold_pct: number;
+  cooldown_minutes: number;
+  updated_at: string;
+}
+
+export interface AlertEvaluateResponse {
+  evaluated_at: string;
+  new_alerts_triggered_count: number;
+  alerts: AlertHistoryItem[];
+}

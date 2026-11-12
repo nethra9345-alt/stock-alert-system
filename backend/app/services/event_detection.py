@@ -159,3 +159,4 @@ def detect_market_events_from_df(
             })
 
     return events
+

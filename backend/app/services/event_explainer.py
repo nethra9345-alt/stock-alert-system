@@ -146,3 +146,4 @@ def generate_event_explanation(event: Dict[str, Any]) -> Dict[str, Any]:
         "sources": sources,
         "is_verified": is_verified
     }
+
