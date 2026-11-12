@@ -15,29 +15,49 @@ def calculate_ema(series: pd.Series, period: int) -> pd.Series:
 
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     """
-    Calculate Relative Strength Index (RSI) using Wilder's smoothing method.
+    Calculate Relative Strength Index (RSI) using J. Welles Wilder's exact smoothing method (1978).
+    Initial average at day `period` is the simple arithmetic mean of the first `period` gains/losses.
+    Subsequent averages use Wilder's recursive smoothing:
+      AvgGain(t) = (AvgGain(t-1) * (period - 1) + Gain(t)) / period
+      AvgLoss(t) = (AvgLoss(t-1) * (period - 1) + Loss(t)) / period
+    RS = AvgGain / AvgLoss
     RSI = 100 - (100 / (1 + RS))
-    where RS = Avg Gain / Avg Loss
+    Strictly bounded in [0, 100] with full edge-case handling for zero losses and zero gains.
     """
-    delta = series.diff()
+    delta = series.diff().to_numpy()
+    n = len(series)
+    rsi_vals = np.full(n, np.nan, dtype=float)
+    if n <= period:
+        return pd.Series(rsi_vals, index=series.index)
 
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
+    gains = np.maximum(delta, 0.0)
+    losses = np.maximum(-delta, 0.0)
 
-    # Wilder's exponential smoothing: alpha = 1 / period
-    avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    # Initial average at index = period using simple arithmetic mean
+    avg_gain = float(np.mean(gains[1:period + 1]))
+    avg_loss = float(np.mean(losses[1:period + 1]))
 
-    # Calculate RS
-    # When avg_loss is 0, RS is infinite (RSI = 100)
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
+    if avg_loss == 0.0:
+        rsi_vals[period] = 100.0 if avg_gain > 0 else 50.0
+    elif avg_gain == 0.0:
+        rsi_vals[period] = 0.0
+    else:
+        rs = avg_gain / avg_loss
+        rsi_vals[period] = 100.0 - (100.0 / (1.0 + rs))
 
-    # Handle edge cases
-    rsi = rsi.where(avg_loss != 0, 100.0)
-    rsi = rsi.where(avg_gain != 0, 0.0)
+    for i in range(period + 1, n):
+        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
 
-    return rsi
+        if avg_loss == 0.0:
+            rsi_vals[i] = 100.0 if avg_gain > 0 else 50.0
+        elif avg_gain == 0.0:
+            rsi_vals[i] = 0.0
+        else:
+            rs = avg_gain / avg_loss
+            rsi_vals[i] = 100.0 - (100.0 / (1.0 + rs))
+
+    return pd.Series(rsi_vals, index=series.index)
 
 
 def calculate_macd(

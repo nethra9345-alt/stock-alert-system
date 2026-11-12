@@ -33,15 +33,38 @@ export const StockChart: React.FC<StockChartProps> = ({
   const [showEMA26, setShowEMA26] = useState(false);
   const [activeSubChart, setActiveSubChart] = useState<'volume' | 'rsi' | 'macd'>('volume');
 
-  // Merge OHLCV data with technical indicators by timestamp index
-  const mergedData = data.map((d, i) => {
-    const ind = indicators[i] || {};
+  // Index indicators by normalized date key (YYYY-MM-DD) for exact chronological alignment
+  const indicatorByDate = new Map<string, IndicatorPoint>();
+  indicators.forEach((ind) => {
+    const key = ind.timestamp.includes('T')
+      ? ind.timestamp.split('T')[0]
+      : ind.timestamp.split(' ')[0];
+    indicatorByDate.set(key, ind);
+  });
+
+  const mergedData = data.map((d) => {
+    const formattedDate = d.timestamp.includes('T')
+      ? d.timestamp.split('T')[0]
+      : d.timestamp.split(' ')[0];
+    const ind = indicatorByDate.get(formattedDate);
+
     return {
-      ...d,
-      ...ind,
-      formattedDate: d.timestamp.includes('T')
-        ? d.timestamp.split('T')[0]
-        : d.timestamp.split(' ')[0],
+      timestamp: d.timestamp,
+      formattedDate,
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close, // Preserve genuine historical close, never overwrite with indicator slice
+      volume: d.volume,
+      sma_20: ind?.sma_20 ?? null,
+      sma_50: ind?.sma_50 ?? null,
+      sma_200: ind?.sma_200 ?? null,
+      ema_12: ind?.ema_12 ?? null,
+      ema_26: ind?.ema_26 ?? null,
+      rsi_14: ind?.rsi_14 ?? null,
+      macd_line: ind?.macd_line ?? null,
+      macd_signal: ind?.macd_signal ?? null,
+      macd_histogram: ind?.macd_histogram ?? null,
     };
   });
 
@@ -63,6 +86,13 @@ export const StockChart: React.FC<StockChartProps> = ({
     if (val >= 1e5) return `${(val / 1e5).toFixed(2)} L`;
     if (val >= 1e3) return `${(val / 1e3).toFixed(1)}k`;
     return val.toString();
+  };
+
+  const formatVolumeDetailed = (val: number) => {
+    const formatted = val.toLocaleString('en-IN');
+    if (val >= 1e7) return `${formatted} (${(val / 1e7).toFixed(2)} Cr shares)`;
+    if (val >= 1e5) return `${formatted} (${(val / 1e5).toFixed(2)} L shares)`;
+    return `${formatted} shares`;
   };
 
   return (
@@ -300,7 +330,7 @@ export const StockChart: React.FC<StockChartProps> = ({
                     borderRadius: '6px',
                     fontSize: '11px',
                   }}
-                  formatter={(val: any) => [formatVolume(val), 'Volume']}
+                  formatter={(val: any) => [formatVolumeDetailed(Number(val) || 0), 'Volume']}
                 />
                 <Bar dataKey="volume" fill="#3b82f6" opacity={0.6} />
               </ComposedChart>

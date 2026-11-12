@@ -109,3 +109,4 @@ npm run build
 ## ⚠️ Financial Risk Disclaimer
 
 StockPulse AI is strictly an **educational and analytical platform**. All price predictions, technical indicators, and quantitative scores are mathematical estimations derived from historical OHLCV data. They do **not** constitute investment advice, financial counsel, or guarantees of future market performance. Always conduct independent research or consult a SEBI-registered financial advisor before trading.
+

@@ -194,14 +194,31 @@ export const StockExplorerPage: React.FC = () => {
                   {quote.exchange || 'NSE'}
                 </span>
                 {quote.is_demo ? (
-                  <Badge variant="warning">DEMO DATA</Badge>
+                  <Badge variant="warning">DEMO / SIMULATED</Badge>
+                ) : quote.is_live ? (
+                  <Badge variant="success" pulse>LIVE MARKET TICK</Badge>
+                ) : quote.data_source === 'cached' ? (
+                  <Badge variant="slate">CACHED QUOTE</Badge>
                 ) : (
-                  <Badge variant="success">LIVE API FEED</Badge>
+                  <Badge variant="slate">MARKET CLOSED (SETTLED)</Badge>
                 )}
               </div>
               <h1 className="text-lg font-semibold text-slate-300">{quote.name}</h1>
-              <div className="text-xs text-slate-500 mt-1 font-mono">
-                Sector: {quote.sector || 'Equities'} • Source: {quote.data_source}
+              <div className="text-xs text-slate-400 mt-1 font-mono flex flex-wrap items-center gap-2">
+                <span>Sector: {quote.sector || 'Equities'}</span>
+                <span>•</span>
+                <span>
+                  Source:{' '}
+                  {quote.is_demo
+                    ? 'Offline Synthetic Fallback'
+                    : quote.data_source === 'live_market'
+                    ? 'yfinance (Live Tick)'
+                    : quote.data_source === 'cached'
+                    ? 'yfinance (Cached Response)'
+                    : 'yfinance (EOD Settled)'}
+                </span>
+                <span>•</span>
+                <span>Session: {quote.timestamp}</span>
               </div>
             </div>
 

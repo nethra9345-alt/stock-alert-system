@@ -16,7 +16,7 @@ _CACHE: Dict[str, Tuple[float, Any]] = {}
 
 # Well-known stock metadata for popular NSE/BSE tickers
 SYMBOL_METADATA = {
-    "RELIANCE.NS": {"name": "Reliance Industries Ltd", "exchange": "NSE", "sector": "Energy & Retail", "base_price": 2980.50},
+    "RELIANCE.NS": {"name": "Reliance Industries Ltd", "exchange": "NSE", "sector": "Energy & Retail", "base_price": 1335.00},
     "TCS.NS": {"name": "Tata Consultancy Services Ltd", "exchange": "NSE", "sector": "Information Technology", "base_price": 4120.00},
     "HDFCBANK.NS": {"name": "HDFC Bank Ltd", "exchange": "NSE", "sector": "Financial Services", "base_price": 1640.25},
     "INFY.NS": {"name": "Infosys Ltd", "exchange": "NSE", "sector": "Information Technology", "base_price": 1825.80},
@@ -184,24 +184,27 @@ def get_stock_quote(symbol: str) -> StockQuote:
     })
 
     if cached:
+        cached_retrieved_at = cached.get("retrieved_at", now_ist_str)
         return StockQuote(
             symbol=norm_symbol,
             name=meta["name"],
             exchange=meta["exchange"],
             sector=meta.get("sector"),
-            is_live=is_market_open,
+            is_live=False,  # Cached quote is not live tick
             is_market_open=is_market_open,
-            timestamp=now_ist_str,
+            timestamp=cached_retrieved_at,
             data_source="cached",
             is_demo=cached.get("is_demo", False),
-            **{k: v for k, v in cached.items() if k not in ["is_demo"]}
+            **{k: v for k, v in cached.items() if k not in ["is_demo", "retrieved_at"]}
         )
 
     # Attempt fetch from yfinance
     q = fetch_quote_yfinance(norm_symbol)
     if q is not None:
         q["is_demo"] = False
+        q["retrieved_at"] = now_ist_str
         _set_cache(cache_key, q)
+        source = "live_market" if is_market_open else "eod_settled"
         return StockQuote(
             symbol=norm_symbol,
             name=meta["name"],
@@ -210,14 +213,15 @@ def get_stock_quote(symbol: str) -> StockQuote:
             is_live=is_market_open,
             is_market_open=is_market_open,
             timestamp=now_ist_str,
-            data_source="live_api",
+            data_source=source,
             is_demo=False,
-            **{k: v for k, v in q.items() if k not in ["is_demo"]}
+            **{k: v for k, v in q.items() if k not in ["is_demo", "retrieved_at"]}
         )
 
     # If yfinance failed or timed out, provide clean fallback explicitly marked as demo data
     fallback_q = get_verified_fallback_quote(norm_symbol)
     fallback_q["is_demo"] = True
+    fallback_q["retrieved_at"] = now_ist_str
     _set_cache(cache_key, fallback_q)
 
     return StockQuote(
@@ -230,7 +234,7 @@ def get_stock_quote(symbol: str) -> StockQuote:
         timestamp=now_ist_str,
         data_source="fallback_offline",
         is_demo=True,
-        **{k: v for k, v in fallback_q.items() if k not in ["is_demo"]}
+        **{k: v for k, v in fallback_q.items() if k not in ["is_demo", "retrieved_at"]}
     )
 
 
@@ -276,9 +280,11 @@ def get_stock_history_df(symbol: str, period: str = "6mo", interval: str = "1d")
         df, is_demo, source = cached
         return df.copy(), is_demo, "cached"
 
+    is_open, _ = is_indian_market_open()
+
     try:
         ticker = yf.Ticker(norm_symbol)
-        hist = ticker.history(period=period, interval=interval)
+        hist = ticker.history(period=period, interval=interval, auto_adjust=True)
         if not hist.empty and len(hist) >= 5:
             hist = hist.reset_index()
             # Normalize column names to lowercase
@@ -292,10 +298,27 @@ def get_stock_history_df(symbol: str, period: str = "6mo", interval: str = "1d")
                 "Volume": "volume"
             }
             hist = hist.rename(columns=col_map)
-            hist["timestamp"] = hist["timestamp"].astype(str)
+
+            # Ensure clean YYYY-MM-DD string representation for date alignment
+            if pd.api.types.is_datetime64_any_dtype(hist["timestamp"]):
+                hist["timestamp"] = hist["timestamp"].dt.strftime("%Y-%m-%d")
+            else:
+                hist["timestamp"] = hist["timestamp"].astype(str).str.split(" ").str[0].str.split("T").str[0]
+
+            # Drop duplicates and sort strictly chronologically
+            hist = hist.drop_duplicates(subset=["timestamp"]).sort_values("timestamp").reset_index(drop=True)
+
+            # Ensure valid non-null numerical types
+            hist["open"] = hist["open"].astype(float).round(2)
+            hist["high"] = hist["high"].astype(float).round(2)
+            hist["low"] = hist["low"].astype(float).round(2)
+            hist["close"] = hist["close"].astype(float).round(2)
+            hist["volume"] = hist["volume"].fillna(0).clip(lower=0).astype(int)
+
             hist = hist[["timestamp", "open", "high", "low", "close", "volume"]]
-            _set_cache(cache_key, (hist, False, "live_api"))
-            return hist.copy(), False, "live_api"
+            source_tag = "live_market" if is_open else "eod_settled"
+            _set_cache(cache_key, (hist, False, source_tag))
+            return hist.copy(), False, source_tag
     except Exception:
         pass
 

@@ -97,6 +97,50 @@ def test_stock_indicators():
     assert "disclaimer" in data
 
 
+def test_indicator_history_date_alignment():
+    """Verify indicators align exactly with history timestamps and extend to the latest date."""
+    hist_res = client.get("/api/stocks/RELIANCE.NS/history?period=6mo&interval=1d")
+    ind_res = client.get("/api/stocks/RELIANCE.NS/indicators?period=6mo")
+
+    assert hist_res.status_code == 200
+    assert ind_res.status_code == 200
+
+    hist_data = hist_res.json()["data"]
+    ind_data = ind_res.json()["indicators"]
+
+    assert len(hist_data) > 0
+    assert len(ind_data) > 0
+
+    # Ensure latest history date matches latest indicator date
+    latest_hist_date = hist_data[-1]["timestamp"]
+    latest_ind_date = ind_data[-1]["timestamp"]
+    assert latest_hist_date == latest_ind_date, (
+        f"Latest history date ({latest_hist_date}) must match latest indicator date ({latest_ind_date})"
+    )
+
+    # Latest point must have SMA 20, RSI 14, and MACD populated (not stopping months early)
+    latest_ind = ind_data[-1]
+    assert latest_ind["sma_20"] is not None, "SMA 20 must be populated on the latest date"
+    assert latest_ind["rsi_14"] is not None, "RSI 14 must be populated on the latest date"
+    assert latest_ind["macd_line"] is not None, "MACD must be populated on the latest date"
+
+
+def test_datasource_metadata_consistency():
+    """Verify that quote metadata is never self-contradictory."""
+    res = client.get("/api/stocks/RELIANCE.NS")
+    assert res.status_code == 200
+    data = res.json()
+
+    # If data_source is 'cached', is_live must be False
+    if data["data_source"] == "cached":
+        assert data["is_live"] is False, "Cached data cannot be flagged as live"
+
+    # If is_live is True, is_demo must be False and market must be open
+    if data["is_live"]:
+        assert data["is_demo"] is False, "Live data cannot be demo"
+        assert data["data_source"] == "live_market"
+
+
 def test_watchlist_flow():
     # 1. Fetch watchlist
     res = client.get("/api/watchlist")
