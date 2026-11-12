@@ -18,3 +18,4 @@ class User(Base):
     watchlists = relationship("WatchlistItem", back_populates="user", cascade="all, delete-orphan")
     portfolio_items = relationship("PortfolioTransaction", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("PriceAlert", back_populates="user", cascade="all, delete-orphan")
+

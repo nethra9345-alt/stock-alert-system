@@ -16,3 +16,4 @@ api_router.include_router(stocks.router, prefix="/stocks", tags=["Stocks"])
 api_router.include_router(watchlist.router, prefix="/watchlist", tags=["Watchlist"])
 api_router.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
+

@@ -1,9 +1,11 @@
 import datetime
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.dependencies import get_current_user
+from backend.app.models.user import User
 from backend.app.models.alert import PriceAlert
 from backend.app.schemas.alert import AlertCreate, AlertResponse
 from backend.app.services.market_service import get_stock_quote, normalize_symbol
@@ -12,12 +14,17 @@ router = APIRouter()
 
 
 @router.get("", response_model=List[AlertResponse])
-def get_alerts(db: Session = Depends(get_db)):
+def get_alerts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Fetches user price alerts and evaluates against current stock prices."""
-    alerts = db.query(PriceAlert).order_by(PriceAlert.created_at.desc()).all()
+    alerts = db.query(PriceAlert).filter(
+        PriceAlert.user_id == current_user.id
+    ).order_by(PriceAlert.created_at.desc()).all()
 
-    # Seed initial alerts if empty
-    if not alerts:
+    # Seed initial alerts for user 1 if empty
+    if not alerts and current_user.id == 1:
         seed = [
             ("RELIANCE.NS", 3050.0, "ABOVE", "Reliance resistance target"),
             ("TCS.NS", 4000.0, "BELOW", "TCS buy dip alert"),
@@ -26,7 +33,7 @@ def get_alerts(db: Session = Depends(get_db)):
         for sym, tgt, cond, note in seed:
             q = get_stock_quote(sym)
             a = PriceAlert(
-                user_id=1,
+                user_id=current_user.id,
                 symbol=sym,
                 company_name=q.name,
                 target_price=tgt,
@@ -35,7 +42,7 @@ def get_alerts(db: Session = Depends(get_db)):
             )
             db.add(a)
         db.commit()
-        alerts = db.query(PriceAlert).all()
+        alerts = db.query(PriceAlert).filter(PriceAlert.user_id == current_user.id).all()
 
     results = []
     for a in alerts:
@@ -73,18 +80,25 @@ def get_alerts(db: Session = Depends(get_db)):
     return results
 
 
-@router.post("", response_model=AlertResponse)
-def create_alert(data: AlertCreate, db: Session = Depends(get_db)):
-    """Creates a new price alert."""
+@router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
+def create_alert(
+    data: AlertCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Creates a new price alert isolated to current user."""
     cond = data.condition.upper()
     if cond not in ["ABOVE", "BELOW"]:
-        raise HTTPException(status_code=400, detail="Condition must be 'ABOVE' or 'BELOW'")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Condition must be 'ABOVE' or 'BELOW'"
+        )
 
     norm_sym = normalize_symbol(data.symbol)
     q = get_stock_quote(norm_sym)
 
     alert = PriceAlert(
-        user_id=1,
+        user_id=current_user.id,
         symbol=norm_sym,
         company_name=data.company_name or q.name,
         target_price=data.target_price,
@@ -114,11 +128,19 @@ def create_alert(data: AlertCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{alert_id}/toggle", response_model=AlertResponse)
-def toggle_alert(alert_id: int, db: Session = Depends(get_db)):
-    """Toggles alert active status."""
-    alert = db.query(PriceAlert).filter(PriceAlert.id == alert_id).first()
+def toggle_alert(
+    alert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Toggles alert active status for an alert belonging to user."""
+    alert = db.query(PriceAlert).filter(
+        PriceAlert.id == alert_id,
+        PriceAlert.user_id == current_user.id
+    ).first()
+
     if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
     alert.is_active = not alert.is_active
     db.commit()
@@ -142,11 +164,19 @@ def toggle_alert(alert_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{alert_id}")
-def delete_alert(alert_id: int, db: Session = Depends(get_db)):
-    """Deletes an alert."""
-    alert = db.query(PriceAlert).filter(PriceAlert.id == alert_id).first()
+def delete_alert(
+    alert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Deletes an alert belonging to current user."""
+    alert = db.query(PriceAlert).filter(
+        PriceAlert.id == alert_id,
+        PriceAlert.user_id == current_user.id
+    ).first()
+
     if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
 
     db.delete(alert)
     db.commit()

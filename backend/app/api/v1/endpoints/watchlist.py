@@ -1,34 +1,41 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.dependencies import get_current_user
+from backend.app.models.user import User
 from backend.app.models.watchlist import WatchlistItem
-from backend.app.schemas.watchlist import WatchlistCreate, WatchlistResponse
+from backend.app.schemas.watchlist import WatchlistCreate, WatchlistUpdate, WatchlistResponse
 from backend.app.services.market_service import get_stock_quote, normalize_symbol, SYMBOL_METADATA
 
 router = APIRouter()
 
 
 @router.get("", response_model=List[WatchlistResponse])
-def get_watchlist(db: Session = Depends(get_db)):
-    """Fetches user watchlist enriched with latest quotes."""
-    items = db.query(WatchlistItem).order_by(WatchlistItem.created_at.desc()).all()
+def get_watchlist(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Fetches user watchlist strictly isolated to the authenticated user."""
+    items = db.query(WatchlistItem).filter(
+        WatchlistItem.user_id == current_user.id
+    ).order_by(WatchlistItem.created_at.desc()).all()
 
-    # If watchlist is empty, seed with initial popular stocks
-    if not items:
+    # If primary user's watchlist is empty, seed with initial popular stocks
+    if not items and current_user.id == 1:
         default_syms = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"]
         for s in default_syms:
             meta = SYMBOL_METADATA.get(s, {"name": s, "exchange": "NSE"})
             item = WatchlistItem(
-                user_id=1,
+                user_id=current_user.id,
                 symbol=s,
                 company_name=meta.get("name"),
                 exchange=meta.get("exchange", "NSE")
             )
             db.add(item)
         db.commit()
-        items = db.query(WatchlistItem).all()
+        items = db.query(WatchlistItem).filter(WatchlistItem.user_id == current_user.id).all()
 
     results = []
     for it in items:
@@ -48,22 +55,29 @@ def get_watchlist(db: Session = Depends(get_db)):
     return results
 
 
-@router.post("", response_model=WatchlistResponse)
-def add_to_watchlist(data: WatchlistCreate, db: Session = Depends(get_db)):
-    """Adds a new stock to user watchlist."""
+@router.post("", response_model=WatchlistResponse, status_code=status.HTTP_201_CREATED)
+def add_to_watchlist(
+    data: WatchlistCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Adds a new stock to the authenticated user's isolated watchlist."""
     norm_sym = normalize_symbol(data.symbol)
 
     existing = db.query(WatchlistItem).filter(
-        WatchlistItem.user_id == 1,
+        WatchlistItem.user_id == current_user.id,
         WatchlistItem.symbol == norm_sym
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail=f"{norm_sym} already exists in your watchlist")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{norm_sym} already exists in your watchlist"
+        )
 
     q = get_stock_quote(norm_sym)
     item = WatchlistItem(
-        user_id=1,
+        user_id=current_user.id,
         symbol=norm_sym,
         company_name=data.company_name or q.name,
         exchange=data.exchange or q.exchange,
@@ -87,13 +101,61 @@ def add_to_watchlist(data: WatchlistCreate, db: Session = Depends(get_db)):
     )
 
 
-@router.delete("/{item_id}")
-def delete_from_watchlist(item_id: int, db: Session = Depends(get_db)):
-    """Removes a stock item from watchlist."""
-    item = db.query(WatchlistItem).filter(WatchlistItem.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Watchlist item not found")
+@router.put("/{item_id}", response_model=WatchlistResponse)
+def update_watchlist_item(
+    item_id: int,
+    data: WatchlistUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Updates notes or details of an existing watchlist item owned by user."""
+    item = db.query(WatchlistItem).filter(
+        WatchlistItem.id == item_id,
+        WatchlistItem.user_id == current_user.id
+    ).first()
 
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found")
+
+    if data.notes is not None:
+        item.notes = data.notes
+    if data.company_name is not None:
+        item.company_name = data.company_name
+
+    db.commit()
+    db.refresh(item)
+    q = get_stock_quote(item.symbol)
+
+    return WatchlistResponse(
+        id=item.id,
+        user_id=item.user_id,
+        symbol=item.symbol,
+        company_name=item.company_name,
+        exchange=item.exchange,
+        notes=item.notes,
+        created_at=item.created_at,
+        current_price=q.price,
+        change=q.change,
+        change_percent=q.change_percent
+    )
+
+
+@router.delete("/{item_id}")
+def delete_from_watchlist(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Removes a stock item from user's isolated watchlist."""
+    item = db.query(WatchlistItem).filter(
+        WatchlistItem.id == item_id,
+        WatchlistItem.user_id == current_user.id
+    ).first()
+
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Watchlist item not found")
+
+    sym = item.symbol
     db.delete(item)
     db.commit()
-    return {"status": "success", "message": f"Removed {item.symbol} from watchlist"}
+    return {"status": "success", "message": f"Removed {sym} from watchlist"}

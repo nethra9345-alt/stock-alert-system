@@ -20,3 +20,4 @@ class PortfolioTransaction(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="portfolio_items")
+

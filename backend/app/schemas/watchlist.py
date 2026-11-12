@@ -10,6 +10,11 @@ class WatchlistCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class WatchlistUpdate(BaseModel):
+    notes: Optional[str] = None
+    company_name: Optional[str] = None
+
+
 class WatchlistResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

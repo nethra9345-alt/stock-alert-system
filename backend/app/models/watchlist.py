@@ -20,3 +20,4 @@ class WatchlistItem(Base):
     )
 
     user = relationship("User", back_populates="watchlists")
+

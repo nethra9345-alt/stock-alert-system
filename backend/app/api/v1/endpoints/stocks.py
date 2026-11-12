@@ -116,3 +116,4 @@ def get_stock_indicators(
         is_demo=is_demo,
         disclaimer="Experimental technical indicators for educational purposes only. Not financial advice."
     )
+

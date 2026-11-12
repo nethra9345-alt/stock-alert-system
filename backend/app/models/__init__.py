@@ -5,3 +5,4 @@ from backend.app.models.portfolio import PortfolioTransaction
 from backend.app.models.alert import PriceAlert
 
 __all__ = ["Base", "User", "WatchlistItem", "PortfolioTransaction", "PriceAlert"]
+

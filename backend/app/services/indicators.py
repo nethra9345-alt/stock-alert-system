@@ -194,3 +194,4 @@ def interpret_indicators(df_with_indicators: pd.DataFrame) -> Dict[str, Any]:
         "trend_sma": trend_sma,
         "overall_signal": overall_signal
     }
+

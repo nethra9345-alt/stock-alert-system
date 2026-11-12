@@ -46,3 +46,4 @@ def get_overview():
 def get_indices():
     """Returns benchmark indices: NIFTY 50, SENSEX, BANK NIFTY, INDIA VIX."""
     return get_market_indices()
+

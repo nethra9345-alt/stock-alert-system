@@ -95,3 +95,4 @@ def test_compute_all_indicators_dataframe():
     summary = interpret_indicators(result_df)
     assert "overall_signal" in summary
     assert summary["overall_signal"] in ["BULLISH", "BEARISH", "NEUTRAL"]
+

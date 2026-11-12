@@ -23,8 +23,16 @@ def test_health_endpoint():
     data = response.json()
     assert data["status"] == "online"
     assert data["service"] == "StockPulse AI"
-    assert data["database"] == "healthy"
-    assert "indian_market" in data
+    assert "database" in data
+    assert data["database"]["status"] == "connected"
+    assert data["database"]["database_type"] in ["sqlite", "postgresql"]
+    assert "users" in data["database"]["verified_tables"]
+    assert "watchlist_items" in data["database"]["verified_tables"]
+    assert "portfolio_transactions" in data["database"]["verified_tables"]
+    assert "price_alerts" in data["database"]["verified_tables"]
+    # Ensure no credentials leaked
+    assert "password" not in str(data).lower()
+    assert "secret" not in str(data).lower()
 
 
 def test_market_overview():
@@ -97,8 +105,20 @@ def test_watchlist_flow():
     assert isinstance(items, list)
 
     # 2. Add an item
-    add_res = client.post("/api/watchlist", json={"symbol": "TATAMOTORS.NS", "notes": "Test Watchlist"})
-    assert add_res.status_code in [200, 400]
+    sym = "LT.NS"
+    add_res = client.post("/api/watchlist", json={"symbol": sym, "notes": "Initial Test Note"})
+    assert add_res.status_code in [201, 400]
+
+    if add_res.status_code == 201:
+        created_id = add_res.json()["id"]
+        # 3. Update item details
+        upd_res = client.put(f"/api/watchlist/{created_id}", json={"notes": "Updated Test Note"})
+        assert upd_res.status_code == 200
+        assert upd_res.json()["notes"] == "Updated Test Note"
+
+        # 4. Delete item
+        del_res = client.delete(f"/api/watchlist/{created_id}")
+        assert del_res.status_code == 200
 
 
 def test_portfolio_overview():
@@ -109,6 +129,22 @@ def test_portfolio_overview():
     assert "current_portfolio_value" in data
     assert "holdings" in data
     assert len(data["holdings"]) > 0
+
+    # Add transaction
+    tx_res = client.post("/api/portfolio/transaction", json={
+        "symbol": "ITC.NS",
+        "company_name": "ITC Ltd",
+        "exchange": "NSE",
+        "transaction_type": "BUY",
+        "quantity": 100.0,
+        "purchase_price": 480.0
+    })
+    assert tx_res.status_code == 201
+    tx_id = tx_res.json()["id"]
+
+    # Delete transaction
+    del_res = client.delete(f"/api/portfolio/transaction/{tx_id}")
+    assert del_res.status_code == 200
 
 
 def test_alerts_flow():
@@ -125,7 +161,7 @@ def test_alerts_flow():
         "condition": "ABOVE",
         "notes": "SBI Test Alert"
     })
-    assert create_res.status_code == 200
+    assert create_res.status_code == 201
     created = create_res.json()
     assert created["symbol"] == "SBIN.NS"
     assert created["target_price"] == 850.0

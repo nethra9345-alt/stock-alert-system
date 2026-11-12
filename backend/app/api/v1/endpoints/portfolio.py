@@ -1,9 +1,11 @@
-from typing import Dict
+from typing import Dict, List
 from collections import defaultdict
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import get_db
+from backend.app.core.dependencies import get_current_user
+from backend.app.models.user import User
 from backend.app.models.portfolio import PortfolioTransaction
 from backend.app.schemas.portfolio import (
     PortfolioOverview,
@@ -11,18 +13,23 @@ from backend.app.schemas.portfolio import (
     PortfolioTransactionCreate,
     PortfolioTransactionResponse
 )
-from backend.app.services.market_service import get_stock_quote, normalize_symbol, SYMBOL_METADATA
+from backend.app.services.market_service import get_stock_quote, normalize_symbol
 
 router = APIRouter()
 
 
 @router.get("", response_model=PortfolioOverview)
-def get_portfolio(db: Session = Depends(get_db)):
-    """Computes aggregated portfolio metrics, positions, and live P&L."""
-    transactions = db.query(PortfolioTransaction).all()
+def get_portfolio(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Computes aggregated portfolio metrics, positions, and live P&L for current user."""
+    transactions = db.query(PortfolioTransaction).filter(
+        PortfolioTransaction.user_id == current_user.id
+    ).all()
 
-    # If empty, seed initial realistic portfolio for demonstration
-    if not transactions:
+    # Seed initial demo portfolio for user 1 if empty
+    if not transactions and current_user.id == 1:
         seed_data = [
             ("RELIANCE.NS", "BUY", 10, 2850.00, "Reliance Industries"),
             ("TCS.NS", "BUY", 5, 3950.00, "Tata Consultancy Services"),
@@ -31,7 +38,7 @@ def get_portfolio(db: Session = Depends(get_db)):
         ]
         for sym, t_type, qty, price, name in seed_data:
             tx = PortfolioTransaction(
-                user_id=1,
+                user_id=current_user.id,
                 symbol=sym,
                 company_name=name,
                 transaction_type=t_type,
@@ -40,7 +47,9 @@ def get_portfolio(db: Session = Depends(get_db)):
             )
             db.add(tx)
         db.commit()
-        transactions = db.query(PortfolioTransaction).all()
+        transactions = db.query(PortfolioTransaction).filter(
+            PortfolioTransaction.user_id == current_user.id
+        ).all()
 
     # Aggregate holdings by symbol
     holdings_dict: Dict[str, Dict] = defaultdict(lambda: {
@@ -62,7 +71,6 @@ def get_portfolio(db: Session = Depends(get_db)):
             h["total_qty"] += tx.quantity
             h["total_cost"] += (tx.quantity * tx.purchase_price)
         elif tx.transaction_type.upper() == "SELL":
-            # Reduce quantity proportionally
             if h["total_qty"] > 0:
                 avg_cost = h["total_cost"] / h["total_qty"]
                 h["total_qty"] -= tx.quantity
@@ -111,14 +119,29 @@ def get_portfolio(db: Session = Depends(get_db)):
     )
 
 
-@router.post("/transaction", response_model=PortfolioTransactionResponse)
-def add_transaction(data: PortfolioTransactionCreate, db: Session = Depends(get_db)):
-    """Adds a buy or sell transaction to user portfolio."""
+@router.get("/transactions", response_model=List[PortfolioTransactionResponse])
+def get_transactions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieves all historical portfolio transactions for the authenticated user."""
+    return db.query(PortfolioTransaction).filter(
+        PortfolioTransaction.user_id == current_user.id
+    ).order_by(PortfolioTransaction.transaction_date.desc()).all()
+
+
+@router.post("/transaction", response_model=PortfolioTransactionResponse, status_code=status.HTTP_201_CREATED)
+def add_transaction(
+    data: PortfolioTransactionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Adds a buy or sell transaction to user's isolated portfolio."""
     norm_sym = normalize_symbol(data.symbol)
     q = get_stock_quote(norm_sym)
 
     tx = PortfolioTransaction(
-        user_id=1,
+        user_id=current_user.id,
         symbol=norm_sym,
         company_name=data.company_name or q.name,
         exchange=data.exchange,
@@ -134,11 +157,20 @@ def add_transaction(data: PortfolioTransactionCreate, db: Session = Depends(get_
 
 
 @router.delete("/transaction/{tx_id}")
-def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
-    """Deletes a portfolio transaction."""
-    tx = db.query(PortfolioTransaction).filter(PortfolioTransaction.id == tx_id).first()
+def delete_transaction(
+    tx_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Deletes a portfolio transaction belonging to user."""
+    tx = db.query(PortfolioTransaction).filter(
+        PortfolioTransaction.id == tx_id,
+        PortfolioTransaction.user_id == current_user.id
+    ).first()
+
     if not tx:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
     db.delete(tx)
     db.commit()
     return {"status": "success", "message": "Transaction deleted"}

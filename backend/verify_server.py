@@ -25,7 +25,7 @@ def main():
     endpoints = [
         ("/", "Root Welcome API"),
         ("/docs", "Swagger UI OpenAPI Documentation"),
-        ("/api/health", "System & Market Health Check"),
+        ("/api/health", "System & Database Health Check"),
         ("/api/market/overview", "Indian Market Overview & Top Movers"),
         ("/api/market/indices", "Benchmark Indices (NIFTY 50, SENSEX, BANK NIFTY, INDIA VIX)"),
         ("/api/stocks/RELIANCE.NS", "Live Quote (Reliance Industries)"),
@@ -65,6 +65,12 @@ def main():
                     status = response.status_code
                     if status == 200:
                         print(f" [PASS] ({status}) {desc} -> {path}")
+                        if path == "/api/health":
+                            h_data = response.json()
+                            print(f"        -> Database status: {h_data['database']['status']}")
+                            print(f"        -> Database type: {h_data['database']['database_type']}")
+                            print(f"        -> Connectivity: {h_data['database']['connectivity_result']}")
+                            print(f"        -> Verified tables: {h_data['database']['verified_tables']}")
                     else:
                         print(f" [FAIL] ({status}) {desc} -> {path}")
                         all_passed = False

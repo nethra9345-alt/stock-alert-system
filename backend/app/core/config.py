@@ -1,6 +1,12 @@
-from typing import List
+import os
+from typing import List, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+
+# Project Root Directory
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+DEFAULT_DB_FILE = os.path.join(BASE_DIR, "stockpulse.db").replace("\\", "/")
+DEFAULT_SQLITE_URL = f"sqlite:///{DEFAULT_DB_FILE}"
 
 
 class Settings(BaseSettings):
@@ -10,9 +16,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
-    # Database
+    # Database: SQLite by default with PostgreSQL compatibility
+    # Set DATABASE_URL in .env to point to PostgreSQL in production
     DATABASE_URL: str = Field(
-        default="sqlite:///./stockpulse.db",
+        default=DEFAULT_SQLITE_URL,
         description="SQLAlchemy database connection string. Can be PostgreSQL URL in production."
     )
 
@@ -28,7 +35,7 @@ class Settings(BaseSettings):
     # Market Configuration
     DEFAULT_CACHE_TTL: int = 60  # seconds
 
-    INDICES: dict = {
+    INDICES: Dict[str, Any] = {
         "NIFTY 50": {"symbol": "^NSEI", "exchange": "NSE", "display_name": "NIFTY 50"},
         "SENSEX": {"symbol": "^BSESN", "exchange": "BSE", "display_name": "S&P BSE SENSEX"},
         "BANK NIFTY": {"symbol": "^NSEBANK", "exchange": "NSE", "display_name": "NIFTY BANK"},

@@ -101,3 +101,4 @@ class TechnicalIndicatorResponse(BaseModel):
     data_source: str
     is_demo: bool = False
     disclaimer: str = "Experimental technical indicators for educational purposes only. Not financial advice."
+
