@@ -12,12 +12,18 @@ import {
   Calendar,
   Layers,
   Info,
+  Zap,
+  ExternalLink,
+  CheckCircle2,
+  RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
-import { marketApi, watchlistApi } from '../services/api';
+import { marketApi, watchlistApi, eventsApi } from '../services/api';
 import {
   StockQuote,
   StockHistory,
   TechnicalIndicatorResponse,
+  MarketEvent,
 } from '../types';
 import StockChart from '../components/StockChart';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -54,6 +60,8 @@ export const StockExplorerPage: React.FC = () => {
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [history, setHistory] = useState<StockHistory | null>(null);
   const [indicators, setIndicators] = useState<TechnicalIndicatorResponse | null>(null);
+  const [marketEvents, setMarketEvents] = useState<MarketEvent[]>([]);
+  const [scanningEvents, setScanningEvents] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
@@ -79,11 +87,40 @@ export const StockExplorerPage: React.FC = () => {
       setQuote(quoteRes);
       setHistory(historyRes);
       setIndicators(indRes);
+
+      // Fetch detected market events asynchronously
+      try {
+        const evRes = await eventsApi.getEventsForSymbol(symbol, { limit: 20 });
+        setMarketEvents(evRes.events);
+      } catch (evErr) {
+        console.warn('Could not fetch events for symbol:', evErr);
+        setMarketEvents([]);
+      }
     } catch (err: any) {
       console.error('Error fetching stock details:', err);
       setError(err?.response?.data?.detail || err?.message || `Failed to fetch data for ${symbol}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleScanEvents = async () => {
+    if (!quote) return;
+    try {
+      setScanningEvents(true);
+      const res = await eventsApi.analyzeEvents(quote.symbol, period);
+      setToastMessage(
+        `Scanned ${quote.symbol}: ${res.new_events_saved} new events detected (${res.total_events_in_db} total recorded).`
+      );
+      const evRes = await eventsApi.getEventsForSymbol(quote.symbol, { limit: 20 });
+      setMarketEvents(evRes.events);
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      console.error('Scan events error:', err);
+      setToastMessage(err?.response?.data?.detail || 'Failed to scan market events');
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setScanningEvents(false);
     }
   };
 
@@ -331,6 +368,7 @@ export const StockExplorerPage: React.FC = () => {
             <StockChart
               data={history.data}
               indicators={indicators?.indicators}
+              events={marketEvents}
               symbol={quote.symbol}
               isPositive={isPositive}
             />
@@ -404,6 +442,165 @@ export const StockExplorerPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Market Anomalies & AI Explanations Section */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    Market Event Intelligence & Catalysts
+                    <span className="text-xs font-mono font-normal px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                      {marketEvents.length} Recorded
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Surges, gap moves, and volume spikes detected on historical trading sessions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleScanEvents}
+                  disabled={scanningEvents}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  {scanningEvents ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Scanning Sessions...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-3.5 h-3.5" />
+                      Scan & Detect Anomalies
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => navigate('/events')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition"
+                >
+                  All Market Events →
+                </button>
+              </div>
+            </div>
+
+            {marketEvents.length === 0 ? (
+              <div className="py-8 text-center text-slate-500 text-xs font-mono">
+                No recorded anomalies for {quote.symbol} yet. Click "Scan & Detect Anomalies" to analyze recent sessions.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {marketEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-slate-700 transition"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold text-white">
+                          {ev.event_date ? ev.event_date.split('T')[0] : ''}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${
+                            ev.event_type.includes('Surge') || ev.event_type.includes('Up') || ev.event_type.includes('Breakout')
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                              : ev.event_type.includes('Drop') || ev.event_type.includes('Down') || ev.event_type.includes('Breakdown')
+                              ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                              : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                          }`}
+                        >
+                          ⚡ {ev.event_type}
+                        </span>
+                        <Badge
+                          variant={
+                            ev.severity === 'extreme'
+                              ? 'danger'
+                              : ev.severity === 'high'
+                              ? 'warning'
+                              : ev.severity === 'elevated'
+                              ? 'info'
+                              : 'slate'
+                          }
+                        >
+                          {ev.severity.toUpperCase()}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs font-mono">
+                        <div>
+                          <span className="text-slate-500 mr-1">Move:</span>
+                          <span
+                            className={`font-bold ${
+                              (ev.price_change_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {(ev.price_change_pct ?? 0) >= 0 ? '+' : ''}
+                            {ev.price_change_pct != null ? `${ev.price_change_pct.toFixed(2)}%` : '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 mr-1">Volume:</span>
+                          <span className="text-slate-200 font-semibold">
+                            {ev.volume_ratio != null ? `${ev.volume_ratio.toFixed(1)}x avg` : '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 mr-1">Close:</span>
+                          <span className="text-white">
+                            {ev.close_price != null ? `₹${ev.close_price.toFixed(2)}` : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 space-y-1.5">
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {ev.explanation_summary}
+                      </p>
+                      {ev.explanation_detail && ev.explanation_detail !== ev.explanation_summary && (
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          {ev.explanation_detail}
+                        </p>
+                      )}
+                    </div>
+
+                    {ev.is_verified && ev.sources && ev.sources.length > 0 ? (
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-semibold">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Verified Sources:
+                        </span>
+                        {ev.sources.map((s, idx) => (
+                          <a
+                            key={idx}
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 hover:text-white transition"
+                          >
+                            <span className="max-w-[180px] truncate">{s.title}</span>
+                            <span className="text-slate-500">({s.publisher})</span>
+                            <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-center gap-1.5 text-[10px] font-mono text-slate-500">
+                        <HelpCircle className="w-3 h-3 text-slate-600" />
+                        <span>No verified catalyst in news stream within ±4 days.</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
     </div>

@@ -10,12 +10,14 @@ import {
   Tooltip,
   CartesianGrid,
   ReferenceLine,
+  ReferenceDot,
 } from 'recharts';
 import { OHLCVPoint, IndicatorPoint } from '../types';
 
 interface StockChartProps {
   data: OHLCVPoint[];
   indicators?: IndicatorPoint[];
+  events?: any[];
   symbol: string;
   isPositive?: boolean;
 }
@@ -23,6 +25,7 @@ interface StockChartProps {
 export const StockChart: React.FC<StockChartProps> = ({
   data,
   indicators = [],
+  events = [],
   symbol,
   isPositive = true,
 }) => {
@@ -31,6 +34,7 @@ export const StockChart: React.FC<StockChartProps> = ({
   const [showSMA200, setShowSMA200] = useState(false);
   const [showEMA12, setShowEMA12] = useState(false);
   const [showEMA26, setShowEMA26] = useState(false);
+  const [showEvents, setShowEvents] = useState(true);
   const [activeSubChart, setActiveSubChart] = useState<'volume' | 'rsi' | 'macd'>('volume');
 
   // Index indicators by normalized date key (YYYY-MM-DD) for exact chronological alignment
@@ -42,11 +46,18 @@ export const StockChart: React.FC<StockChartProps> = ({
     indicatorByDate.set(key, ind);
   });
 
+  const eventsByDate = new Map<string, any>();
+  events.forEach((ev) => {
+    const key = ev.event_date.split('T')[0];
+    eventsByDate.set(key, ev);
+  });
+
   const mergedData = data.map((d) => {
     const formattedDate = d.timestamp.includes('T')
       ? d.timestamp.split('T')[0]
       : d.timestamp.split(' ')[0];
     const ind = indicatorByDate.get(formattedDate);
+    const ev = eventsByDate.get(formattedDate);
 
     return {
       timestamp: d.timestamp,
@@ -65,6 +76,7 @@ export const StockChart: React.FC<StockChartProps> = ({
       macd_line: ind?.macd_line ?? null,
       macd_signal: ind?.macd_signal ?? null,
       macd_histogram: ind?.macd_histogram ?? null,
+      marketEvent: ev || null,
     };
   });
 
@@ -93,6 +105,65 @@ export const StockChart: React.FC<StockChartProps> = ({
     if (val >= 1e7) return `${formatted} (${(val / 1e7).toFixed(2)} Cr shares)`;
     if (val >= 1e5) return `${formatted} (${(val / 1e5).toFixed(2)} L shares)`;
     return `${formatted} shares`;
+  };
+
+  const CustomPriceTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const pt = payload[0].payload;
+      const ev = pt.marketEvent;
+      return (
+        <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl text-xs font-mono max-w-xs z-50">
+          <p className="text-slate-400 font-semibold mb-1">{pt.formattedDate}</p>
+          <div className="space-y-0.5 mb-1.5">
+            <p className="text-slate-200">
+              Close: <span className="text-emerald-400 font-bold">{formatCurrency(pt.close)}</span>
+            </p>
+            {pt.open != null && <p className="text-slate-400">Open: {formatCurrency(pt.open)}</p>}
+            {pt.high != null && pt.low != null && (
+              <p className="text-slate-400">
+                Range: {formatCurrency(pt.low)} – {formatCurrency(pt.high)}
+              </p>
+            )}
+            {pt.volume != null && <p className="text-slate-400">Vol: {formatVolume(pt.volume)}</p>}
+          </div>
+
+          {(showSMA20 || showSMA50 || showSMA200 || showEMA12 || showEMA26) && (
+            <div className="pt-1.5 border-t border-slate-800 space-y-0.5 text-[11px]">
+              {showSMA20 && pt.sma_20 != null && <p className="text-cyan-400">SMA 20: {formatCurrency(pt.sma_20)}</p>}
+              {showSMA50 && pt.sma_50 != null && <p className="text-amber-400">SMA 50: {formatCurrency(pt.sma_50)}</p>}
+              {showSMA200 && pt.sma_200 != null && <p className="text-purple-400">SMA 200: {formatCurrency(pt.sma_200)}</p>}
+              {showEMA12 && pt.ema_12 != null && <p className="text-blue-400">EMA 12: {formatCurrency(pt.ema_12)}</p>}
+              {showEMA26 && pt.ema_26 != null && <p className="text-orange-400">EMA 26: {formatCurrency(pt.ema_26)}</p>}
+            </div>
+          )}
+
+          {ev && showEvents && (
+            <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] font-sans">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                    ev.severity === 'extreme'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      : ev.severity === 'high'
+                      ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  }`}
+                >
+                  ⚡ {ev.event_type}
+                </span>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">({ev.severity})</span>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-snug line-clamp-3">{ev.explanation_summary}</p>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mt-1">
+                <span>Move: {ev.price_change_pct != null ? `${ev.price_change_pct > 0 ? '+' : ''}${ev.price_change_pct.toFixed(2)}%` : 'N/A'}</span>
+                <span>Vol: {ev.volume_ratio != null ? `${ev.volume_ratio.toFixed(1)}x avg` : 'N/A'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -153,6 +224,18 @@ export const StockChart: React.FC<StockChartProps> = ({
           >
             EMA 26
           </button>
+          {events.length > 0 && (
+            <button
+              onClick={() => setShowEvents(!showEvents)}
+              className={`px-2.5 py-1 text-xs font-mono font-medium rounded transition flex items-center gap-1 ${
+                showEvents
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              }`}
+            >
+              <span>⚡ Events ({events.length})</span>
+            </button>
+          )}
         </div>
 
         {/* Sub-chart toggle */}
@@ -217,26 +300,7 @@ export const StockChart: React.FC<StockChartProps> = ({
               axisLine={{ stroke: '#334155' }}
               tickFormatter={(v) => `₹${Math.round(v)}`}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                fontSize: '12px',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-              }}
-              formatter={(value: any, name: string) => {
-                const numericVal = typeof value === 'number' ? value : parseFloat(value);
-                if (name === 'close') return [formatCurrency(numericVal), 'Price'];
-                if (name === 'sma_20') return [formatCurrency(numericVal), 'SMA 20'];
-                if (name === 'sma_50') return [formatCurrency(numericVal), 'SMA 50'];
-                if (name === 'sma_200') return [formatCurrency(numericVal), 'SMA 200'];
-                if (name === 'ema_12') return [formatCurrency(numericVal), 'EMA 12'];
-                if (name === 'ema_26') return [formatCurrency(numericVal), 'EMA 26'];
-                return [value, name];
-              }}
-              labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontWeight: 600 }}
-            />
+            <Tooltip content={<CustomPriceTooltip />} />
             <Area
               type="monotone"
               dataKey="close"
@@ -295,6 +359,30 @@ export const StockChart: React.FC<StockChartProps> = ({
                 name="ema_26"
               />
             )}
+            {showEvents &&
+              events.map((ev: any, idx: number) => {
+                const dateKey = ev.event_date ? ev.event_date.split('T')[0] : '';
+                const matchingPoint = mergedData.find((d) => d.formattedDate === dateKey);
+                if (!matchingPoint) return null;
+                const dotColor =
+                  ev.severity === 'extreme'
+                    ? '#ef4444'
+                    : ev.severity === 'high'
+                    ? '#f97316'
+                    : '#f59e0b';
+                return (
+                  <ReferenceDot
+                    key={`ev-dot-${ev.id || idx}`}
+                    x={dateKey}
+                    y={matchingPoint.close}
+                    r={6}
+                    fill={dotColor}
+                    stroke="#0f172a"
+                    strokeWidth={2}
+                    isFront={true}
+                  />
+                );
+              })}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

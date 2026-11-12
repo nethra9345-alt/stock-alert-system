@@ -10,6 +10,7 @@ import {
   BellRing,
   Settings,
   Activity,
+  Zap,
   X
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/market', label: 'Market Overview', icon: TrendingUp },
   { to: '/explorer', label: 'Stock Explorer', icon: Search },
+  { to: '/events', label: 'Market Events', icon: Zap },
   { to: '/watchlist', label: 'Watchlist', icon: Bookmark },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { to: '/insights', label: 'AI Insights', icon: BrainCircuit },

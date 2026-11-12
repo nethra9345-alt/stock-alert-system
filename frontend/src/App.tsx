@@ -5,6 +5,7 @@ import TopNav from './components/TopNav';
 import Dashboard from './pages/Dashboard';
 import MarketOverviewPage from './pages/MarketOverviewPage';
 import StockExplorerPage from './pages/StockExplorerPage';
+import MarketEventsPage from './pages/MarketEventsPage';
 import WatchlistPage from './pages/WatchlistPage';
 import PortfolioPage from './pages/PortfolioPage';
 import AIInsightsPage from './pages/AIInsightsPage';
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/market" element={<MarketOverviewPage />} />
               <Route path="/explorer" element={<StockExplorerPage />} />
+              <Route path="/events" element={<MarketEventsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/insights" element={<AIInsightsPage />} />

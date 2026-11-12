@@ -13,13 +13,15 @@ import {
   Clock,
   Sparkles,
   BarChart2,
+  Zap,
 } from 'lucide-react';
-import { marketApi, watchlistApi, portfolioApi, mlApi } from '../services/api';
+import { marketApi, watchlistApi, portfolioApi, mlApi, eventsApi } from '../services/api';
 import {
   MarketOverview,
   WatchlistItem,
   PortfolioOverview,
   StockPredictionResponse,
+  MarketEvent,
 } from '../types';
 import IndexCard from '../components/IndexCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -32,6 +34,7 @@ export const Dashboard: React.FC = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioOverview | null>(null);
   const [topPrediction, setTopPrediction] = useState<StockPredictionResponse | null>(null);
+  const [recentEvents, setRecentEvents] = useState<MarketEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,6 +71,13 @@ export const Dashboard: React.FC = () => {
         setTopPrediction(pred);
       } catch (e) {
         console.warn('Prediction fetch error:', e);
+      }
+
+      try {
+        const evRes = await eventsApi.getEvents({ limit: 4 });
+        setRecentEvents(evRes.events);
+      } catch (e) {
+        console.warn('Events fetch error:', e);
       }
     } catch (err: any) {
       console.error('Failed to load dashboard:', err);
@@ -440,6 +450,102 @@ export const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Market Event Anomaly Radar */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Market Event Anomaly Radar</h3>
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  AI DETECTED
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Automated detection of volume shocks, gap moves, and price spikes with verified news catalysts.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/events')}
+            className="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition self-start sm:self-auto"
+          >
+            Explore All Events ({recentEvents.length}) <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {recentEvents.length === 0 ? (
+          <div className="py-6 text-center text-slate-500 text-xs font-mono">
+            No market events logged yet. Visit the{' '}
+            <button
+              onClick={() => navigate('/events')}
+              className="text-cyan-400 hover:underline"
+            >
+              Market Events
+            </button>{' '}
+            page to scan historical sessions.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {recentEvents.map((ev) => (
+              <div
+                key={ev.id}
+                onClick={() => navigate(`/explorer?symbol=${ev.symbol}`)}
+                className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer transition flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="font-mono font-bold text-sm text-white group-hover:text-cyan-400 transition">
+                      {ev.symbol}
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase font-semibold ${
+                        ev.severity === 'extreme'
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                          : ev.severity === 'high'
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      }`}
+                    >
+                      {ev.severity}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs font-mono mb-2">
+                    <span
+                      className={`font-bold ${
+                        (ev.price_change_pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {(ev.price_change_pct ?? 0) >= 0 ? '+' : ''}
+                      {ev.price_change_pct != null ? `${ev.price_change_pct.toFixed(2)}%` : '—'}
+                    </span>
+                    <span className="text-slate-400 text-[11px]">
+                      Vol: {ev.volume_ratio != null ? `${ev.volume_ratio.toFixed(1)}x` : '—'}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 line-clamp-2 leading-snug">
+                    {ev.explanation_summary}
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                  <span>{ev.event_date ? ev.event_date.split('T')[0] : ''}</span>
+                  <span className="text-cyan-400 flex items-center gap-0.5 group-hover:underline">
+                    Inspect <ArrowRight className="w-2.5 h-2.5" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Mandatory Financial Disclaimer */}

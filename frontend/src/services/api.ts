@@ -187,4 +187,47 @@ export const mlApi = {
   },
 };
 
+export const eventsApi = {
+  getEvents: async (params?: {
+    symbol?: string;
+    event_type?: string;
+    severity?: string;
+    is_verified?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ count: number; events: any[] }> => {
+    const res = await api.get('/events', { params });
+    return res.data;
+  },
+
+  getEventsForSymbol: async (
+    symbol: string,
+    params?: { event_type?: string; limit?: number }
+  ): Promise<{ count: number; events: any[] }> => {
+    const res = await api.get(`/events/${encodeURIComponent(symbol)}`, {
+      params,
+    });
+    return res.data;
+  },
+
+  getLatestEvent: async (symbol: string): Promise<any> => {
+    const res = await api.get(`/events/${encodeURIComponent(symbol)}/latest`);
+    return res.data;
+  },
+
+  analyzeEvents: async (
+    symbol: string,
+    period: string = '6mo',
+    priceThresholdPct: number = 3.5,
+    volumeRatioThreshold: number = 2.5
+  ): Promise<any> => {
+    const res = await api.post(`/events/${encodeURIComponent(symbol)}/analyze`, {
+      period,
+      price_threshold_pct: priceThresholdPct,
+      volume_ratio_threshold: volumeRatioThreshold,
+    });
+    return res.data;
+  },
+};
+
 export default api;

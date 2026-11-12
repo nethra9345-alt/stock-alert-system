@@ -247,3 +247,46 @@ export interface HealthResponse {
     status_message: string;
   };
 }
+
+export interface MarketEventSource {
+  title: string;
+  url?: string;
+  publisher?: string;
+  published_at?: string;
+}
+
+export interface MarketEvent {
+  id: number;
+  symbol: string;
+  company_name?: string;
+  event_date: string;
+  event_type: string;
+  severity: 'NORMAL' | 'ELEVATED' | 'HIGH' | 'EXTREME' | string;
+  price_change_pct: number;
+  volume_ratio: number;
+  intraday_range_pct: number;
+  open_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  volume: number;
+  explanation_summary?: string;
+  explanation_detail?: string;
+  sources: MarketEventSource[];
+  is_verified: boolean;
+  created_at?: string;
+}
+
+export interface MarketEventListResponse {
+  count: number;
+  events: MarketEvent[];
+}
+
+export interface AnalyzeEventsResponse {
+  symbol: string;
+  company_name?: string;
+  analyzed_sessions: number;
+  detected_events_count: number;
+  newly_persisted_count: number;
+  events: MarketEvent[];
+}
