@@ -67,3 +67,4 @@ class ModelInfoResponse(BaseModel):
     metrics: List[str]
     data_leakage_safeguards: List[str]
     disclaimer: str = FINANCIAL_DISCLAIMER
+

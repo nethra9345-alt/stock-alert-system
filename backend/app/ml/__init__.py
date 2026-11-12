@@ -20,3 +20,4 @@ __all__ = [
     "predict_next_day",
     "evaluate_predictions"
 ]
+

@@ -326,3 +326,4 @@ def predict_next_day(symbol: str) -> Dict[str, Any]:
         "data_source": metadata.get("data_source", "live_api"),
         "is_demo": metadata.get("is_demo", False)
     }
+

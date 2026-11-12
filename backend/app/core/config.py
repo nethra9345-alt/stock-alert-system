@@ -3,8 +3,10 @@ from typing import List, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
-# Project Root Directory
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+# Project Directories
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+BASE_DIR = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
+ENV_FILE = os.path.join(BACKEND_DIR, ".env")
 DEFAULT_DB_FILE = os.path.join(BASE_DIR, "stockpulse.db").replace("\\", "/")
 DEFAULT_SQLITE_URL = f"sqlite:///{DEFAULT_DB_FILE}"
 
@@ -16,11 +18,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
 
-    # Database: SQLite by default with PostgreSQL compatibility
-    # Set DATABASE_URL in .env to point to PostgreSQL in production
+    # Database: Supports PostgreSQL (postgresql+psycopg://) and SQLite (sqlite:///)
+    # Read from environment variable or backend/.env; falls back to SQLite if unset
     DATABASE_URL: str = Field(
         default=DEFAULT_SQLITE_URL,
-        description="SQLAlchemy database connection string. Can be PostgreSQL URL in production."
+        description="SQLAlchemy database connection string. PostgreSQL or SQLite."
     )
 
     # CORS Origins
@@ -56,7 +58,7 @@ class Settings(BaseSettings):
     ]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         case_sensitive=True,
         extra="allow"
     )

@@ -7,10 +7,13 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Add project root to sys.path
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# Add project root and backend to sys.path
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
 from backend.app.core.config import settings
 from backend.app.core.database import Base
@@ -45,7 +48,6 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    # Use configuration dictionary
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = settings.DATABASE_URL
 
@@ -55,11 +57,13 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True  # Required for SQLite ALTER TABLE support
+            render_as_batch=is_sqlite
         )
 
         with context.begin_transaction():

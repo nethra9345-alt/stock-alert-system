@@ -8,16 +8,24 @@ from backend.app.models.watchlist import WatchlistItem
 from backend.app.models.portfolio import PortfolioTransaction
 from backend.app.models.alert import PriceAlert
 
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+
+
+def get_test_engine():
+    return create_engine(settings.DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+
 
 @pytest.fixture(scope="module")
 def db_session():
-    """Provides a database session bound to the actual stockpulse.db."""
-    engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
+    """Provides a database session bound to the active database (PostgreSQL or SQLite)."""
+    engine = get_test_engine()
     Base.metadata.create_all(bind=engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal()
     yield session
     session.close()
+    engine.dispose()
 
 
 def test_user_creation_and_constraints(db_session):
@@ -177,10 +185,10 @@ def test_actual_price_alert_crud_and_toggle(db_session):
 
 def test_database_persistence_across_restart():
     """
-    9. Restart the backend database engine and verify that previously saved data still exists on disk.
+    9. Restart the backend database engine and verify that previously saved data still exists in PostgreSQL.
     """
     # Session 1: write a distinct persistent marker
-    engine1 = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
+    engine1 = get_test_engine()
     Session1 = sessionmaker(bind=engine1)
     s1 = Session1()
 
@@ -206,8 +214,8 @@ def test_database_persistence_across_restart():
     s1.close()
     engine1.dispose()  # Complete shutdown / disconnection of Session 1
 
-    # Simulated server reboot: completely fresh connection to stockpulse.db
-    engine2 = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
+    # Simulated server reboot: completely fresh connection to PostgreSQL
+    engine2 = get_test_engine()
     Session2 = sessionmaker(bind=engine2)
     s2 = Session2()
 
@@ -227,7 +235,7 @@ def test_user_data_isolation():
     """
     Verify that User A cannot see or access User B's watchlist, portfolio, or alerts.
     """
-    engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = get_test_engine()
     Session = sessionmaker(bind=engine)
     session = Session()
 
@@ -244,7 +252,7 @@ def test_user_data_isolation():
         session.add(user_b)
         session.commit()
 
-    # User A adds an item
+    # Clean existing
     session.query(WatchlistItem).filter(WatchlistItem.user_id == user_a.id).delete()
     session.query(WatchlistItem).filter(WatchlistItem.user_id == user_b.id).delete()
     session.commit()
@@ -262,4 +270,3 @@ def test_user_data_isolation():
 
     session.close()
     engine.dispose()
-
