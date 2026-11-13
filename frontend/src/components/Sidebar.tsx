@@ -11,7 +11,11 @@ import {
   Settings,
   Activity,
   Zap,
-  X
+  X,
+  Brain,
+  Building2,
+  GitCompare,
+  FileText
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,6 +27,10 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/market', label: 'Market Overview', icon: TrendingUp },
   { to: '/explorer', label: 'Stock Explorer', icon: Search },
+  { to: '/research', label: 'AI Research', icon: Brain },
+  { to: '/fundamentals', label: 'Fundamentals', icon: Building2 },
+  { to: '/compare', label: 'Stock Compare', icon: GitCompare },
+  { to: '/reports', label: 'Research Reports', icon: FileText },
   { to: '/events', label: 'Market Events', icon: Zap },
   { to: '/watchlist', label: 'Watchlist', icon: Bookmark },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },

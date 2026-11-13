@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
@@ -33,6 +33,10 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://localhost:8000"
     ]
+
+    # AI / LLM Configuration
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     # Market Configuration
     DEFAULT_CACHE_TTL: int = 60  # seconds

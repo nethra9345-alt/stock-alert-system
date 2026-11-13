@@ -4,6 +4,7 @@ from backend.app.models.watchlist import WatchlistItem
 from backend.app.models.portfolio import PortfolioTransaction
 from backend.app.models.alert import PriceAlert, AlertHistory, AlertPreferences
 from backend.app.models.event import MarketEvent
+from backend.app.models.research import ResearchReport, ResearchChatMessage
 
 __all__ = [
     "Base",
@@ -13,5 +14,7 @@ __all__ = [
     "PriceAlert",
     "AlertHistory",
     "AlertPreferences",
-    "MarketEvent"
+    "MarketEvent",
+    "ResearchReport",
+    "ResearchChatMessage",
 ]

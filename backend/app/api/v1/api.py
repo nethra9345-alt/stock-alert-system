@@ -7,7 +7,8 @@ from backend.app.api.v1.endpoints import (
     portfolio,
     alerts,
     ml,
-    events
+    events,
+    research
 )
 
 api_router = APIRouter()
@@ -20,3 +21,4 @@ api_router.include_router(portfolio.router, prefix="/portfolio", tags=["Portfoli
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 api_router.include_router(ml.router, prefix="/ml", tags=["Machine Learning"])
 api_router.include_router(events.router, prefix="/events", tags=["Market Events"])
+api_router.include_router(research.router, prefix="/research", tags=["AI Research"])

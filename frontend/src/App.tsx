@@ -11,6 +11,10 @@ import PortfolioPage from './pages/PortfolioPage';
 import AIInsightsPage from './pages/AIInsightsPage';
 import PriceAlertsPage from './pages/PriceAlertsPage';
 import SettingsPage from './pages/SettingsPage';
+import ResearchAssistantPage from './pages/ResearchAssistantPage';
+import FundamentalsPage from './pages/FundamentalsPage';
+import StockComparisonPage from './pages/StockComparisonPage';
+import ResearchReportsPage from './pages/ResearchReportsPage';
 
 export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -30,6 +34,10 @@ export const App: React.FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/market" element={<MarketOverviewPage />} />
               <Route path="/explorer" element={<StockExplorerPage />} />
+              <Route path="/research" element={<ResearchAssistantPage />} />
+              <Route path="/fundamentals" element={<FundamentalsPage />} />
+              <Route path="/compare" element={<StockComparisonPage />} />
+              <Route path="/reports" element={<ResearchReportsPage />} />
               <Route path="/events" element={<MarketEventsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />

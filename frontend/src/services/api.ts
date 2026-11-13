@@ -17,7 +17,12 @@ import {
   AlertEvaluateResponse,
   StockPredictionResponse,
   ModelComparisonResponse,
-  ModelInfoResponse
+  ModelInfoResponse,
+  CompanyFundamentals,
+  TechnicalAnalysis,
+  StockComparison,
+  ResearchChatMessageItem,
+  ResearchReportItem
 } from '../types';
 
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
@@ -285,6 +290,75 @@ export const eventsApi = {
       price_threshold_pct: priceThresholdPct,
       volume_ratio_threshold: volumeRatioThreshold,
     });
+    return res.data;
+  },
+};
+
+export const researchApi = {
+  getDossier: async (symbol: string): Promise<any> => {
+    const res = await api.get(`/research/${encodeURIComponent(symbol)}`);
+    return res.data;
+  },
+
+  getFundamentals: async (symbol: string): Promise<CompanyFundamentals> => {
+    const res = await api.get<CompanyFundamentals>(`/research/${encodeURIComponent(symbol)}/fundamentals`);
+    return res.data;
+  },
+
+  getTechnical: async (symbol: string, period: string = '6mo'): Promise<TechnicalAnalysis> => {
+    const res = await api.get<TechnicalAnalysis>(`/research/${encodeURIComponent(symbol)}/technical`, {
+      params: { period },
+    });
+    return res.data;
+  },
+
+  chat: async (
+    message: string,
+    sessionId: string = 'default-session',
+    symbol?: string,
+    includePortfolio: boolean = false
+  ): Promise<ResearchChatMessageItem> => {
+    const res = await api.post<ResearchChatMessageItem>('/research/chat', {
+      message,
+      session_id: sessionId,
+      symbol,
+      include_portfolio: includePortfolio,
+    });
+    return res.data;
+  },
+
+  getChatHistory: async (sessionId: string): Promise<ResearchChatMessageItem[]> => {
+    const res = await api.get<ResearchChatMessageItem[]>('/research/chat/history', {
+      params: { session_id: sessionId },
+    });
+    return res.data;
+  },
+
+  compare: async (symbols: string[], period: string = '6mo'): Promise<StockComparison> => {
+    const res = await api.post<StockComparison>('/research/compare', {
+      symbols,
+      period,
+    });
+    return res.data;
+  },
+
+  createReport: async (symbol: string, title?: string): Promise<ResearchReportItem> => {
+    const res = await api.post<ResearchReportItem>('/research/reports', {
+      symbol,
+      title,
+    });
+    return res.data;
+  },
+
+  listReports: async (symbol?: string): Promise<ResearchReportItem[]> => {
+    const res = await api.get<ResearchReportItem[]>('/research/reports', {
+      params: symbol ? { symbol } : undefined,
+    });
+    return res.data;
+  },
+
+  getReport: async (reportId: number): Promise<ResearchReportItem> => {
+    const res = await api.get<ResearchReportItem>(`/research/reports/${reportId}`);
     return res.data;
   },
 };

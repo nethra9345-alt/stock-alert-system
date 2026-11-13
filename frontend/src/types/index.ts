@@ -411,3 +411,162 @@ export interface AlertEvaluateResponse {
   new_alerts_triggered_count: number;
   alerts: AlertHistoryItem[];
 }
+
+// Stage 7: AI Stock Research & Investment Assistant Types
+export interface CompanyFundamentals {
+  symbol: string;
+  company_name: string;
+  sector: string;
+  industry: string;
+  business_summary: string;
+  website: string;
+  currency: string;
+  reporting_period: string;
+  data_source: string;
+  retrieved_at: string;
+  data_freshness: string;
+  overview?: {
+    company_name: string;
+    sector: string;
+    industry: string;
+    business_summary: string;
+    website: string;
+  };
+  valuation: {
+    market_cap?: number | null;
+    market_cap_formatted?: string;
+    trailing_pe?: number | null;
+    forward_pe?: number | null;
+    price_to_book?: number | null;
+    price_to_sales?: number | null;
+    enterprise_value?: number | null;
+    ev_to_ebitda?: number | null;
+  };
+  growth: {
+    revenue_growth_yoy_pct?: number | null;
+    profit_growth_yoy_pct?: number | null;
+  };
+  financial_performance: {
+    total_revenue?: number | null;
+    revenue_growth_yoy_pct?: number | null;
+    net_profit?: number | null;
+    profit_growth_yoy_pct?: number | null;
+    trailing_eps?: number | null;
+    forward_eps?: number | null;
+  };
+  profitability: {
+    roe_pct?: number | null;
+    return_on_equity_pct?: number | null;
+    roa_pct?: number | null;
+    roce_pct?: number | null;
+    operating_margin_pct?: number | null;
+    net_margin_pct?: number | null;
+    free_cash_flow?: number | null;
+  };
+  financial_health: {
+    debt_to_equity?: number | null;
+    debt_to_equity_pct?: number | null;
+    current_ratio?: number | null;
+    quick_ratio?: number | null;
+    dividend_yield_pct?: number | null;
+  };
+  dividends?: {
+    dividend_yield_pct?: number | null;
+  };
+  missing_metrics: string[];
+  disclaimer: string;
+}
+
+export interface TechnicalAnalysis {
+  symbol: string;
+  status: string;
+  current_price?: number;
+  overall_sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL' | 'CONFLICTING';
+  bullish_signals: string[];
+  bearish_signals: string[];
+  neutral_conflicts: string[];
+  indicators: {
+    sma_20?: number | null;
+    sma_50?: number | null;
+    sma_200?: number | null;
+    ema_12?: number | null;
+    ema_26?: number | null;
+    rsi_14?: number | null;
+    macd_line?: number | null;
+    macd_signal?: number | null;
+    macd_histogram?: number | null;
+    historical_volatility_20d_annualized?: number | null;
+  };
+  support_levels: {
+    pivot: number;
+    s1: number;
+    s2: number;
+    swing_low_20d?: number;
+  };
+  resistance_levels: {
+    pivot: number;
+    r1: number;
+    r2: number;
+    swing_high_20d?: number;
+  };
+  data_horizon: string;
+  data_source: string;
+  is_demo: boolean;
+  retrieved_at: string;
+}
+
+export interface StockComparison {
+  symbols: string[];
+  period: string;
+  quotes: StockQuote[];
+  fundamentals: CompanyFundamentals[];
+  technicals: TechnicalAnalysis[];
+  metrics_matrix: Array<{
+    category: string;
+    metric: string;
+    unit: string;
+    values: Record<string, any>;
+  }>;
+  normalized_series: Array<Record<string, any>>;
+  comparative_summary: string[];
+  generated_at: string;
+}
+
+export interface ResearchCitation {
+  source: string;
+  category: string;
+  timestamp: string;
+  details: string;
+}
+
+export interface ResearchChatMessageItem {
+  id?: number;
+  session_id: string;
+  symbol?: string | null;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  sources?: ResearchCitation[] | null;
+  retrieved_context?: any;
+  provider_used?: string;
+  created_at: string;
+}
+
+export interface ResearchReportItem {
+  id: number;
+  symbol: string;
+  company_name?: string | null;
+  title: string;
+  summary: string;
+  overview?: any;
+  fundamentals?: CompanyFundamentals;
+  technicals?: TechnicalAnalysis;
+  events?: any[];
+  risk_factors?: Array<{
+    category: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH';
+    description: string;
+  }>;
+  sources?: ResearchCitation[];
+  conclusion?: string;
+  created_at?: string;
+}
