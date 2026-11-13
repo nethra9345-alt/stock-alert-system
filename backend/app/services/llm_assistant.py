@@ -315,7 +315,7 @@ def get_chat_history(db: Session, user_id: int, session_id: str) -> List[Dict[st
             ResearchChatMessage.user_id == user_id,
             ResearchChatMessage.session_id == session_id,
         )
-        .order_by(ResearchChatMessage.created_at.asc())
+        .order_by(ResearchChatMessage.created_at.asc(), ResearchChatMessage.id.asc())
         .all()
     )
     return [

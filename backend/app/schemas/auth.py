@@ -16,7 +16,7 @@ class UserLogin(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -37,3 +37,4 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserResponse
+    csrf_token: Optional[str] = None

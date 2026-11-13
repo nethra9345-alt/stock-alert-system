@@ -36,6 +36,8 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="StockPulse AI - Production Security, Reliability & Deployment Engine (Stage 10)",
+    docs_url="/docs" if (not settings.is_production or settings.ENABLE_DOCS_IN_PRODUCTION) else None,
+    openapi_url="/openapi.json" if (not settings.is_production or settings.ENABLE_DOCS_IN_PRODUCTION) else None,
     lifespan=lifespan
 )
 
@@ -51,8 +53,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        if settings.ENVIRONMENT == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+        if is_https and settings.is_production:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
         return response
 
 
@@ -107,14 +110,22 @@ class RequestLoggingAndAuditMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestLoggingAndAuditMiddleware)
 
-# CORS Middleware (strict origin control)
+# CORS Middleware (strict origin control with credentials)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["X-Request-ID"]
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Request-ID",
+        "X-CSRF-Token",
+        "X-User-Id",
+        "Accept",
+        "Origin"
+    ],
+    expose_headers=["X-Request-ID", "X-CSRF-Token"]
 )
 
 # Register API Router

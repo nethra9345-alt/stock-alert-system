@@ -3,6 +3,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_current_user
 from backend.app.models.user import User
@@ -32,7 +33,7 @@ def _ensure_seed_transactions_for_user(db: Session, user_id: int) -> List[Portfo
         PortfolioTransaction.user_id == user_id
     ).all()
 
-    if not transactions and user_id == 1:
+    if not transactions and user_id == 1 and settings.is_demo_allowed:
         seed_data = [
             ("RELIANCE.NS", "BUY", 10, 2850.00, "Reliance Industries"),
             ("TCS.NS", "BUY", 5, 3950.00, "Tata Consultancy Services"),

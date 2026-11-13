@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_current_user
 from backend.app.models.user import User
@@ -22,8 +23,8 @@ def get_watchlist(
         WatchlistItem.user_id == current_user.id
     ).order_by(WatchlistItem.created_at.desc()).all()
 
-    # If primary user's watchlist is empty, seed with initial popular stocks
-    if not items and current_user.id == 1:
+    # If primary user's watchlist is empty, seed with initial popular stocks (dev/demo only)
+    if not items and current_user.id == 1 and settings.is_demo_allowed:
         default_syms = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"]
         for s in default_syms:
             meta = SYMBOL_METADATA.get(s, {"name": s, "exchange": "NSE"})

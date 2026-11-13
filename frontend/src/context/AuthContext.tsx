@@ -54,7 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(res.access_token);
     setUser(res.user);
     localStorage.setItem('stockpulse_access_token', res.access_token);
-    localStorage.setItem('stockpulse_refresh_token', res.refresh_token);
+    // Refresh token is stored in HttpOnly cookie; never stored in JavaScript-accessible storage
+    localStorage.removeItem('stockpulse_refresh_token');
     localStorage.setItem('stockpulse_user', JSON.stringify(res.user));
   };
 
@@ -63,7 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(res.access_token);
     setUser(res.user);
     localStorage.setItem('stockpulse_access_token', res.access_token);
-    localStorage.setItem('stockpulse_refresh_token', res.refresh_token);
+    // Refresh token is stored in HttpOnly cookie; never stored in JavaScript-accessible storage
+    localStorage.removeItem('stockpulse_refresh_token');
     localStorage.setItem('stockpulse_user', JSON.stringify(res.user));
   };
 
@@ -103,3 +105,4 @@ export const useAuth = (): AuthContextType => {
 };
 
 export default AuthContext;
+

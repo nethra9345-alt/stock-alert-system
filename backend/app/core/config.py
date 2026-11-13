@@ -35,11 +35,45 @@ class Settings(BaseSettings):
         description="Secret key for signing JSON Web Tokens"
     )
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # Short-lived access tokens (Stage 10.1 hardening)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RATE_LIMIT_PER_MINUTE: int = 120
     AUTH_RATE_LIMIT_PER_MINUTE: int = 20
     MAX_REQUEST_SIZE_BYTES: int = 10 * 1024 * 1024
+
+    # Security Hardening Flags (Stage 10.1)
+    ALLOW_LEGACY_HEADER_AUTH: bool = True  # Allows X-User-Id in development/test only
+    ALLOW_DEMO_ACCOUNTS: bool = True       # Allows demo login in development/test only
+    ALLOW_DEFAULT_USER_FALLBACK: bool = True  # Allows fallback to user 1 in dev/test only
+    SECURE_COOKIES: bool = False           # Set True in production (HTTPS)
+    CSRF_PROTECTION_ENABLED: bool = True   # Requires X-CSRF-Token matching CSRF cookie
+    ENABLE_DOCS_IN_PRODUCTION: bool = False  # Hides /docs and /openapi.json in production
+    REDIS_URL: Optional[str] = None        # Optional Redis connection URL for multi-worker distributed rate-limiting
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.lower() == "production"
+
+    @property
+    def is_legacy_auth_allowed(self) -> bool:
+        # In production mode, legacy header spoofing is unconditionally rejected
+        if self.is_production:
+            return False
+        return self.ALLOW_LEGACY_HEADER_AUTH
+
+    @property
+    def is_demo_allowed(self) -> bool:
+        # In production mode, demo accounts are unconditionally disabled
+        if self.is_production:
+            return False
+        return self.ALLOW_DEMO_ACCOUNTS
+
+    @property
+    def is_fallback_allowed(self) -> bool:
+        # In production mode, anonymous user fallback is unconditionally disabled
+        if self.is_production:
+            return False
+        return self.ALLOW_DEFAULT_USER_FALLBACK
 
     # CORS Origins
     CORS_ORIGINS: List[str] = [

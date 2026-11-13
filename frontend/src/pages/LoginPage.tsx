@@ -127,25 +127,29 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Demo login shortcut */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-[#0E131F] text-slate-500 font-mono">DEVELOPER TESTING</span>
-          </div>
-        </div>
+        {/* Demo login shortcut - strictly disabled in production builds */}
+        {!import.meta.env.PROD && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-[#0E131F] text-slate-500 font-mono">DEVELOPER TESTING</span>
+              </div>
+            </div>
 
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={submitting}
-          className="w-full py-2 px-4 rounded-lg bg-[#161D2F] hover:bg-[#1E293B] border border-slate-800 text-slate-300 text-xs font-mono transition flex items-center justify-center gap-2"
-        >
-          <Activity className="w-3.5 h-3.5 text-cyan-400" />
-          Quick Sign In as Pro Trader (Demo ID: 1)
-        </button>
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={submitting}
+              className="w-full py-2 px-4 rounded-lg bg-[#161D2F] hover:bg-[#1E293B] border border-slate-800 text-slate-300 text-xs font-mono transition flex items-center justify-center gap-2"
+            >
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              Quick Sign In as Pro Trader (Demo ID: 1)
+            </button>
+          </>
+        )}
 
         <p className="text-center text-xs text-slate-400">
           Don't have an account?{' '}
@@ -159,3 +163,4 @@ export const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+

@@ -41,33 +41,100 @@ import {
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true, // Send HttpOnly refresh & CSRF cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Attach Authorization Bearer token to all outgoing requests if session exists
+// Attach Authorization Bearer token & CSRF protection to outgoing requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('stockpulse_access_token') || sessionStorage.getItem('stockpulse_access_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const csrfToken = getCookie('stockpulse_csrf_token');
+  if (csrfToken && config.headers) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
   return config;
 });
 
-// Global response interceptor for session expiration
+// Global response interceptor for token refresh & session expiration
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      const hadToken = !!(localStorage.getItem('stockpulse_access_token') || sessionStorage.getItem('stockpulse_access_token'));
-      if (hadToken && !error.config.url?.includes('/auth/login')) {
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+      if (originalRequest.url?.includes('/auth/refresh')) {
+        // Refresh itself failed - purge tokens
         localStorage.removeItem('stockpulse_access_token');
         sessionStorage.removeItem('stockpulse_access_token');
         localStorage.removeItem('stockpulse_user');
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const csrfToken = getCookie('stockpulse_csrf_token');
+        const refreshRes = await axios.post<{ access_token: string }>(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+            headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+          }
+        );
+        const newToken = refreshRes.data.access_token;
+        localStorage.setItem('stockpulse_access_token', newToken);
+        api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+        processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        localStorage.removeItem('stockpulse_access_token');
+        sessionStorage.removeItem('stockpulse_access_token');
+        localStorage.removeItem('stockpulse_user');
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);
@@ -557,9 +624,9 @@ export const authApi = {
     return res.data;
   },
 
-  refresh: async (refreshToken: string): Promise<{ access_token: string; expires_in: number }> => {
+  refresh: async (refreshToken?: string): Promise<{ access_token: string; expires_in: number }> => {
     const res = await api.post<{ access_token: string; expires_in: number }>('/auth/refresh', {
-      refresh_token: refreshToken,
+      refresh_token: refreshToken || undefined,
     });
     return res.data;
   },

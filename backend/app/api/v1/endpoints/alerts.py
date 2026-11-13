@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.core.dependencies import get_current_user
 from backend.app.models.user import User
@@ -37,8 +38,8 @@ def get_alerts(
         PriceAlert.user_id == current_user.id
     ).order_by(PriceAlert.created_at.desc()).all()
 
-    # Seed initial alerts for user 1 if empty
-    if not alerts and current_user.id == 1:
+    # Seed initial alerts for user 1 if empty and demo accounts allowed
+    if not alerts and current_user.id == 1 and settings.is_demo_allowed:
         seed = [
             ("RELIANCE.NS", 3050.0, "ABOVE", "Reliance resistance target"),
             ("TCS.NS", 4000.0, "BELOW", "TCS buy dip alert"),

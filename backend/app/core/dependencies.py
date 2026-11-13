@@ -8,6 +8,7 @@ import jwt
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db
 from backend.app.core.security import decode_token, hash_password
 from backend.app.models.user import User
@@ -16,8 +17,11 @@ DEFAULT_USER_EMAIL = "trader@stockpulse.ai"
 DEFAULT_USERNAME = "trader_pro"
 
 
-def get_or_create_default_user(db: Session) -> User:
+def get_or_create_default_user(db: Session) -> Optional[User]:
     """Ensures a default primary user exists in the database for local dev and testing."""
+    if not settings.is_demo_allowed:
+        return None
+
     user = db.query(User).filter(User.id == 1).first()
     if not user:
         user = User(
@@ -40,19 +44,31 @@ def get_or_create_default_user(db: Session) -> User:
 
 def get_current_user(
     authorization: Optional[str] = Header(None, description="Standard Bearer <jwt> authorization header"),
-    x_user_id: Optional[int] = Header(None, description="Legacy header for test isolation"),
+    x_user_id: Optional[int] = Header(None, description="Legacy header - rejected in production"),
     db: Session = Depends(get_db)
 ) -> User:
     """
     Returns the authenticated user.
     1. If 'Authorization: Bearer <token>' is provided, cryptographically verifies the JWT.
     2. If invalid/expired token is supplied, raises 401 Unauthorized.
-    3. If no Authorization is present, checks X-User-Id for backwards test compatibility.
-    4. Otherwise defaults to User ID 1 for unauthenticated read requests.
+    3. If 'X-User-Id' header is provided:
+       - REJECTED with 401 Unauthorized if in production or legacy auth disabled.
+       - Allowed only in test/development environments where legacy header auth is explicitly enabled.
+    4. If no authentication is provided:
+       - REJECTED with 401 Unauthorized if in production or fallback disabled.
+       - Defaults to User ID 1 only in development/test environments.
     """
     get_or_create_default_user(db)
 
-    # 1. Cryptographic JWT Bearer Authentication (Highest Priority)
+    # 1. Reject header identity spoofing in production
+    if x_user_id is not None and not settings.is_legacy_auth_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Header-based user identity spoofing (X-User-Id) is rejected. Cryptographic Bearer token required.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # 2. Cryptographic JWT Bearer Authentication (Highest Priority)
     if authorization:
         if not authorization.startswith("Bearer "):
             raise HTTPException(
@@ -91,8 +107,8 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
-    # 2. Legacy X-User-Id Header Isolation (For Stage 1-9 Regression Tests)
-    if x_user_id is not None:
+    # 3. Legacy X-User-Id Header Isolation (For Stage 1-9 Regression Tests in non-production)
+    if x_user_id is not None and settings.is_legacy_auth_allowed:
         user = db.query(User).filter(User.id == x_user_id, User.is_active == True).first()
         if not user:
             raise HTTPException(
@@ -101,8 +117,22 @@ def get_current_user(
             )
         return user
 
-    # 3. Default fallback for development
+    # 4. Anonymous fallback guard
+    if not settings.is_fallback_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated: Cryptographic Bearer token required.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # 5. Default fallback for development/test convenience
     user = db.query(User).filter(User.id == 1).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User session not found.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     return user
 
 
