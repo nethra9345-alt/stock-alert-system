@@ -147,3 +147,4 @@ def get_report_detail_endpoint(
     if not rep:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Research report not found.")
     return rep
+

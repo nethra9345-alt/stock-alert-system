@@ -22,7 +22,13 @@ import {
   TechnicalAnalysis,
   StockComparison,
   ResearchChatMessageItem,
-  ResearchReportItem
+  ResearchReportItem,
+  NewsItem,
+  CompanySentimentSummary,
+  SentimentTimelinePoint,
+  NewsCorrelation,
+  MarketNewsOverview,
+  NewsAlertItem
 } from '../types';
 
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
@@ -359,6 +365,72 @@ export const researchApi = {
 
   getReport: async (reportId: number): Promise<ResearchReportItem> => {
     const res = await api.get<ResearchReportItem>(`/research/reports/${reportId}`);
+    return res.data;
+  },
+};
+
+export const newsApi = {
+  getNews: async (params?: {
+    symbol?: string;
+    category?: string;
+    sentiment_label?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ total: number; items: NewsItem[] }> => {
+    const res = await api.get('/news', { params });
+    return res.data;
+  },
+
+  getMarketOverview: async (): Promise<MarketNewsOverview> => {
+    const res = await api.get<MarketNewsOverview>('/news/market/overview');
+    return res.data;
+  },
+
+  getNewsForSymbol: async (symbol: string, limit: number = 15): Promise<{ total: number; items: NewsItem[] }> => {
+    const res = await api.get(`/news/symbol/${encodeURIComponent(symbol)}`, {
+      params: { limit },
+    });
+    return res.data;
+  },
+
+  getCompanySentiment: async (symbol: string, timeframe: string = '7d'): Promise<CompanySentimentSummary> => {
+    const res = await api.get<CompanySentimentSummary>(`/news/sentiment/${encodeURIComponent(symbol)}`, {
+      params: { timeframe },
+    });
+    return res.data;
+  },
+
+  getSentimentTrends: async (symbol: string, days: number = 14): Promise<SentimentTimelinePoint[]> => {
+    const res = await api.get<SentimentTimelinePoint[]>(`/news/sentiment/trends/${encodeURIComponent(symbol)}`, {
+      params: { days },
+    });
+    return res.data;
+  },
+
+  getNewsCorrelation: async (newsId: number): Promise<NewsCorrelation> => {
+    const res = await api.get<NewsCorrelation>(`/news/correlation/${newsId}`);
+    return res.data;
+  },
+
+  getNewsAlerts: async (limit: number = 50): Promise<NewsAlertItem[]> => {
+    const res = await api.get<NewsAlertItem[]>('/news/alerts', {
+      params: { limit },
+    });
+    return res.data;
+  },
+
+  refreshNews: async (symbols?: string[]): Promise<any> => {
+    const res = await api.post('/news/refresh', { symbols });
+    return res.data;
+  },
+
+  analyzeArticle: async (newsId: number): Promise<NewsItem> => {
+    const res = await api.post<NewsItem>(`/news/analyze/${newsId}`);
+    return res.data;
+  },
+
+  getNewsDetail: async (newsId: number): Promise<NewsItem> => {
+    const res = await api.get<NewsItem>(`/news/${newsId}`);
     return res.data;
   },
 };

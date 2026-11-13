@@ -330,3 +330,4 @@ def get_chat_history(db: Session, user_id: int, session_id: str) -> List[Dict[st
         }
         for m in messages
     ]
+

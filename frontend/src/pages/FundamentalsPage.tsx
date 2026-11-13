@@ -357,3 +357,4 @@ export const FundamentalsPage: React.FC = () => {
 };
 
 export default FundamentalsPage;
+

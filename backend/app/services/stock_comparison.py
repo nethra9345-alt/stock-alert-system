@@ -212,3 +212,4 @@ def compare_stocks(
         "comparative_summary": summary_points,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
+

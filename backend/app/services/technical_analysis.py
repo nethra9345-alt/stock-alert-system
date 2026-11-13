@@ -252,3 +252,4 @@ def analyze_technical_structure(
         "is_demo": is_demo,
         "retrieved_at": datetime.utcnow().isoformat() + "Z",
     }
+

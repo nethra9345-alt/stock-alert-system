@@ -333,3 +333,4 @@ export const StockComparisonPage: React.FC = () => {
 };
 
 export default StockComparisonPage;
+

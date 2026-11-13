@@ -15,7 +15,8 @@ import {
   Brain,
   Building2,
   GitCompare,
-  FileText
+  FileText,
+  Newspaper
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/market', label: 'Market Overview', icon: TrendingUp },
   { to: '/explorer', label: 'Stock Explorer', icon: Search },
+  { to: '/news', label: 'News Intelligence', icon: Newspaper },
   { to: '/research', label: 'AI Research', icon: Brain },
   { to: '/fundamentals', label: 'Fundamentals', icon: Building2 },
   { to: '/compare', label: 'Stock Compare', icon: GitCompare },

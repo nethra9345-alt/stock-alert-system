@@ -20,6 +20,7 @@ from backend.app.services.fundamentals import get_company_fundamentals
 from backend.app.services.technical_analysis import analyze_technical_structure
 from backend.app.models.event import MarketEvent
 from backend.app.models.portfolio import PortfolioTransaction
+from backend.app.models.news import FinancialNews, NewsSentiment
 from backend.app.services.portfolio_analytics import compute_fifo_portfolio_holdings
 
 # Prompt injection patterns to detect and strip from untrusted web/user text
@@ -152,9 +153,42 @@ def retrieve_rag_context(
         except Exception:
             pass
 
-    # 5. Verified Market News
+    # 5. Verified Market News & Sentiment Intelligence
     news_items: List[Dict[str, str]] = []
-    if not mock_fundamentals:
+    if db is not None:
+        try:
+            db_news = (
+                db.query(FinancialNews, NewsSentiment)
+                .outerjoin(NewsSentiment, FinancialNews.id == NewsSentiment.news_id)
+                .filter(FinancialNews.symbol == norm_sym)
+                .order_by(FinancialNews.published_at.desc())
+                .limit(5)
+                .all()
+            )
+            for fn, ns in db_news:
+                title = sanitize_untrusted_text(fn.title)
+                publisher = sanitize_untrusted_text(fn.source, max_chars=100)
+                sent_label = ns.sentiment_label if ns else "NEUTRAL"
+                sent_score = f"{ns.sentiment_score:+.2f}" if ns else "0.00"
+                news_items.append({
+                    "title": title,
+                    "publisher": publisher,
+                    "link": fn.url,
+                    "sentiment_label": sent_label,
+                    "sentiment_score": sent_score,
+                    "published_at": fn.published_at.strftime("%Y-%m-%d %H:%M UTC") if fn.published_at else "",
+                })
+            if news_items:
+                citations.append({
+                    "source": "StockPulse News Intelligence & Sentiment Database",
+                    "category": "News Sentiment",
+                    "timestamp": now_str,
+                    "details": f"{len(news_items)} verified articles with AI sentiment",
+                })
+        except Exception:
+            pass
+
+    if not news_items and not mock_fundamentals:
         try:
             ticker = yf.Ticker(norm_sym)
             raw_news = ticker.news or []
@@ -281,9 +315,10 @@ def retrieve_rag_context(
 
     # News
     if news_items:
-        lines.append("#### 5. Recent Verified News Headlines [Source: Financial Media Wire]")
+        lines.append("#### 5. Recent Verified News Headlines [Source: Financial News Intelligence]")
         for n in news_items:
-            lines.append(f"- [{n['publisher']}] {n['title']}")
+            sent_str = f" [Sentiment: {n['sentiment_label']}]" if "sentiment_label" in n else ""
+            lines.append(f"- [{n['publisher']}] {n['title']}{sent_str}")
         lines.append("")
 
     # Portfolio

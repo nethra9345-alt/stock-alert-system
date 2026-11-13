@@ -257,3 +257,4 @@ def get_report_by_id(db: Session, report_id: int, user_id: int) -> Optional[Dict
         "conclusion": report.conclusion,
         "created_at": report.created_at.isoformat() + "Z" if report.created_at else None,
     }
+

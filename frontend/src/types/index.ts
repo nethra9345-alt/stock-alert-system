@@ -570,3 +570,126 @@ export interface ResearchReportItem {
   conclusion?: string;
   created_at?: string;
 }
+
+// Stage 8: Financial News Intelligence & Market Sentiment Types
+export interface NewsSentimentDetail {
+  id?: number;
+  sentiment_label: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' | 'MIXED';
+  sentiment_score: number;
+  confidence: number;
+  ai_summary?: string | null;
+  key_facts?: string[] | null;
+  financial_figures?: string[] | null;
+  companies_mentioned?: string[] | null;
+  market_relevance?: string | null;
+  risk_factors?: string[] | null;
+  model_version?: string | null;
+  analyzed_at?: string | null;
+}
+
+export interface NewsItem {
+  id: number;
+  symbol?: string | null;
+  company_name?: string | null;
+  title: string;
+  summary?: string | null;
+  source: string;
+  url: string;
+  category: string;
+  published_at: string;
+  market_session_timing?: string | null;
+  sentiment?: NewsSentimentDetail | null;
+}
+
+export interface CompanySentimentSummary {
+  symbol: string;
+  timeframe: string;
+  total_articles: number;
+  average_sentiment_score: number;
+  distribution: {
+    positive: number;
+    negative: number;
+    neutral: number;
+    mixed: number;
+  };
+  sentiment_trend: string;
+  is_insufficient_data: boolean;
+  message: string;
+  recent_articles: Array<{
+    id: number;
+    title: string;
+    source: string;
+    url: string;
+    published_at: string;
+    sentiment_label: string;
+    sentiment_score: number;
+    confidence: number;
+    market_session_timing?: string | null;
+  }>;
+}
+
+export interface SentimentTimelinePoint {
+  date: string;
+  avg_sentiment_score: number;
+  article_count: number;
+  positive_count: number;
+  negative_count: number;
+  neutral_count: number;
+  mixed_count: number;
+}
+
+export interface NewsCorrelation {
+  news_id: number;
+  symbol: string;
+  publication_timestamp: string;
+  market_session_timing: string;
+  trading_session_date: string;
+  price_metrics: {
+    price_before_publication: number;
+    session_close_price: number;
+    session_after_price: number;
+    session_change_pct: number;
+    next_session_change_pct: number;
+  };
+  volume_metrics: {
+    session_volume: number;
+    volume_20d_average: number;
+    volume_ratio: number;
+  };
+  technical_context: {
+    rsi_14?: number | null;
+    macd_histogram?: number | null;
+  };
+  detected_market_events: Array<{
+    event_type: string;
+    severity: string;
+    price_change_pct: number;
+  }>;
+  correlation_disclaimer: string;
+}
+
+export interface MarketNewsOverview {
+  overall_sentiment: string;
+  average_score: number;
+  distribution: {
+    positive: number;
+    negative: number;
+    neutral: number;
+    mixed: number;
+  };
+  total_articles: number;
+  top_headlines: NewsItem[];
+  refreshed_at: string;
+}
+
+export interface NewsAlertItem {
+  id: number;
+  news_id?: number | null;
+  symbol?: string | null;
+  alert_type: string;
+  severity: string;
+  title: string;
+  message: string;
+  status: string;
+  created_at?: string | null;
+}

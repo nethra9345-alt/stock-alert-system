@@ -5,6 +5,7 @@ from backend.app.models.portfolio import PortfolioTransaction
 from backend.app.models.alert import PriceAlert, AlertHistory, AlertPreferences
 from backend.app.models.event import MarketEvent
 from backend.app.models.research import ResearchReport, ResearchChatMessage
+from backend.app.models.news import FinancialNews, NewsSentiment, CompanySentimentDaily, NewsAlert
 
 __all__ = [
     "Base",
@@ -17,4 +18,8 @@ __all__ = [
     "MarketEvent",
     "ResearchReport",
     "ResearchChatMessage",
+    "FinancialNews",
+    "NewsSentiment",
+    "CompanySentimentDaily",
+    "NewsAlert",
 ]

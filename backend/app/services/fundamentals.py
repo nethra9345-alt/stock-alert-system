@@ -240,3 +240,4 @@ def get_company_fundamentals(
         _FUNDAMENTALS_CACHE[norm_sym] = (now, result)
 
     return result
+

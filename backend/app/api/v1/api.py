@@ -8,7 +8,8 @@ from backend.app.api.v1.endpoints import (
     alerts,
     ml,
     events,
-    research
+    research,
+    news
 )
 
 api_router = APIRouter()
@@ -22,3 +23,4 @@ api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 api_router.include_router(ml.router, prefix="/ml", tags=["Machine Learning"])
 api_router.include_router(events.router, prefix="/events", tags=["Market Events"])
 api_router.include_router(research.router, prefix="/research", tags=["AI Research"])
+api_router.include_router(news.router, prefix="/news", tags=["Financial News"])

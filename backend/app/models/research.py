@@ -40,3 +40,4 @@ class ResearchChatMessage(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
 
     user = relationship("User", backref="research_messages")
+

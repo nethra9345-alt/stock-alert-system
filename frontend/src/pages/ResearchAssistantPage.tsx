@@ -304,3 +304,4 @@ Select a stock or choose a prompt below to begin your analysis.`,
 };
 
 export default ResearchAssistantPage;
+
