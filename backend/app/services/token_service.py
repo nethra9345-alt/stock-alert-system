@@ -197,3 +197,4 @@ def revoke_all_user_tokens(
     ).update({RefreshToken.is_revoked: True})
     db.commit()
     return count
+

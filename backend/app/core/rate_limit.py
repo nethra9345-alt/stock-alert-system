@@ -88,3 +88,4 @@ auth_rate_limiter = RateLimiter(
     requests_per_minute=settings.AUTH_RATE_LIMIT_PER_MINUTE,
     window_seconds=60
 )
+

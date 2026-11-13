@@ -46,7 +46,7 @@ def set_auth_cookies(
     csrf_token: Optional[str] = None
 ) -> str:
     """Sets HttpOnly, SameSite, Secure refresh cookie and companion CSRF cookie."""
-    is_secure = settings.SECURE_COOKIES or settings.is_production or request.url.scheme == "https"
+    is_secure = settings.SECURE_COOKIES or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
     csrf_val = csrf_token or generate_csrf_token()
 
     # 1. HttpOnly Refresh Token Cookie (strictly inaccessible to JavaScript)
@@ -75,7 +75,7 @@ def set_auth_cookies(
 
 def clear_auth_cookies(response: Response, request: Request):
     """Clears refresh and CSRF cookies on logout."""
-    is_secure = settings.SECURE_COOKIES or settings.is_production or request.url.scheme == "https"
+    is_secure = settings.SECURE_COOKIES or (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
     response.delete_cookie(key="stockpulse_refresh_token", path="/api/auth", httponly=True, secure=is_secure, samesite="lax")
     response.delete_cookie(key="stockpulse_csrf_token", path="/", httponly=False, secure=is_secure, samesite="lax")
 

@@ -362,3 +362,4 @@ def test_cross_user_resource_access_and_tampering_audit():
     # User B attempts to view User A's research report
     get_rep_b = client.get(f"/api/research/reports/{report_id}", headers=headers_b)
     assert get_rep_b.status_code == 404
+

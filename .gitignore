@@ -36,11 +36,13 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+*.dump
 
 # Environment
 .env
 .env.local
 .env.*.local
+cookies.txt
 
 # Node / Frontend
 node_modules/
