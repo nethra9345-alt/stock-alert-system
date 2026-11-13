@@ -6,8 +6,11 @@ import {
   Clock,
   User,
   Database,
-  ArrowUpRight
+  ArrowUpRight,
+  LogOut,
+  LogIn
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { marketApi } from '../services/api';
 import { HealthResponse } from '../types';
 
@@ -26,6 +29,7 @@ const QUICK_SEARCH_STOCKS = [
 
 export const TopNav: React.FC<TopNavProps> = ({ onMenuToggle }) => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -152,15 +156,34 @@ export const TopNav: React.FC<TopNavProps> = ({ onMenuToggle }) => {
           <span>IST</span>
         </div>
 
-        {/* User Avatar */}
+        {/* User Session / Auth Controls */}
         <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center text-white font-semibold text-xs shadow-md">
-            <User className="w-4 h-4" />
-          </div>
-          <div className="hidden xl:block text-left">
-            <div className="text-xs font-semibold text-slate-200">Trader Pro</div>
-            <div className="text-[10px] text-emerald-400 font-mono">Active Account</div>
-          </div>
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-white font-semibold text-xs shadow-md">
+                {user.username.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden xl:block text-left">
+                <div className="text-xs font-semibold text-slate-200">{user.full_name || user.username}</div>
+                <div className="text-[10px] text-emerald-400 font-mono">@{user.username}</div>
+              </div>
+              <button
+                onClick={() => logout()}
+                title="Sign out"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition ml-1"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Sign In
+            </button>
+          )}
         </div>
       </div>
     </header>

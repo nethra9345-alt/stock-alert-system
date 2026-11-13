@@ -125,3 +125,4 @@ def downgrade() -> None:
     op.drop_table('ml_backtests')
     op.drop_table('ml_predictions')
     op.drop_table('ml_models')
+

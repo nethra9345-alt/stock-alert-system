@@ -33,7 +33,9 @@ import {
   AdvancedModelComparisonResponse,
   BacktestResultResponse,
   ModelDriftResponse,
-  PredictionHistoryItem
+  PredictionHistoryItem,
+  UserProfile,
+  AuthTokenResponse
 } from '../types';
 
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
@@ -46,6 +48,31 @@ const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Attach Authorization Bearer token to all outgoing requests if session exists
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('stockpulse_access_token') || sessionStorage.getItem('stockpulse_access_token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Global response interceptor for session expiration
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const hadToken = !!(localStorage.getItem('stockpulse_access_token') || sessionStorage.getItem('stockpulse_access_token'));
+      if (hadToken && !error.config.url?.includes('/auth/login')) {
+        localStorage.removeItem('stockpulse_access_token');
+        sessionStorage.removeItem('stockpulse_access_token');
+        localStorage.removeItem('stockpulse_user');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const marketApi = {
   getHealth: async (): Promise<HealthResponse> => {
@@ -507,6 +534,43 @@ export const newsApi = {
 
   getNewsDetail: async (newsId: number): Promise<NewsItem> => {
     const res = await api.get<NewsItem>(`/news/${newsId}`);
+    return res.data;
+  },
+};
+
+export const authApi = {
+  register: async (data: {
+    email: string;
+    username: string;
+    password: string;
+    full_name?: string;
+  }): Promise<AuthTokenResponse> => {
+    const res = await api.post<AuthTokenResponse>('/auth/register', data);
+    return res.data;
+  },
+
+  login: async (credentials: {
+    username_or_email: string;
+    password: string;
+  }): Promise<AuthTokenResponse> => {
+    const res = await api.post<AuthTokenResponse>('/auth/login', credentials);
+    return res.data;
+  },
+
+  refresh: async (refreshToken: string): Promise<{ access_token: string; expires_in: number }> => {
+    const res = await api.post<{ access_token: string; expires_in: number }>('/auth/refresh', {
+      refresh_token: refreshToken,
+    });
+    return res.data;
+  },
+
+  getMe: async (): Promise<UserProfile> => {
+    const res = await api.get<UserProfile>('/auth/me');
+    return res.data;
+  },
+
+  logout: async (): Promise<{ status: string; message: string }> => {
+    const res = await api.post<{ status: string; message: string }>('/auth/logout');
     return res.data;
   },
 };

@@ -369,6 +369,27 @@ export interface PredictionHistoryItem {
   direction_matched?: boolean | null;
 }
 
+// --- Stage 10: Authentication & User Profile Types ---
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  username: string;
+  full_name?: string | null;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: UserProfile;
+}
+
+
 export interface HealthResponse {
   status: string;
   service: string;

@@ -236,3 +236,4 @@ def test_postgresql_ml_registry_persistence():
         assert preds_count > 0
     finally:
         session.close()
+

@@ -24,6 +24,22 @@ class Settings(BaseSettings):
         default=DEFAULT_SQLITE_URL,
         description="SQLAlchemy database connection string. PostgreSQL or SQLite."
     )
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
+
+    # Authentication & Security
+    JWT_SECRET_KEY: str = Field(
+        default="stockpulse-dev-secret-key-replace-in-production-with-env-variable",
+        description="Secret key for signing JSON Web Tokens"
+    )
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    RATE_LIMIT_PER_MINUTE: int = 120
+    AUTH_RATE_LIMIT_PER_MINUTE: int = 20
+    MAX_REQUEST_SIZE_BYTES: int = 10 * 1024 * 1024
 
     # CORS Origins
     CORS_ORIGINS: List[str] = [

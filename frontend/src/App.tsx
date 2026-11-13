@@ -17,42 +17,49 @@ import StockComparisonPage from './pages/StockComparisonPage';
 import ResearchReportsPage from './pages/ResearchReportsPage';
 import NewsIntelligencePage from './pages/NewsIntelligencePage';
 import PredictiveIntelligencePage from './pages/PredictiveIntelligencePage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import { AuthProvider } from './context/AuthContext';
 
 export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-[#0A0E17] text-slate-100 flex">
-        {/* Sidebar */}
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AuthProvider>
+        <div className="min-h-screen bg-[#0A0E17] text-slate-100 flex">
+          {/* Sidebar */}
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-          <TopNav onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+            <TopNav onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/market" element={<MarketOverviewPage />} />
-              <Route path="/explorer" element={<StockExplorerPage />} />
-              <Route path="/research" element={<ResearchAssistantPage />} />
-              <Route path="/fundamentals" element={<FundamentalsPage />} />
-              <Route path="/compare" element={<StockComparisonPage />} />
-              <Route path="/reports" element={<ResearchReportsPage />} />
-              <Route path="/news" element={<NewsIntelligencePage />} />
-              <Route path="/events" element={<MarketEventsPage />} />
-              <Route path="/watchlist" element={<WatchlistPage />} />
-              <Route path="/portfolio" element={<PortfolioPage />} />
-              <Route path="/predictive" element={<PredictiveIntelligencePage />} />
-              <Route path="/insights" element={<AIInsightsPage />} />
-              <Route path="/alerts" element={<PriceAlertsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/market" element={<MarketOverviewPage />} />
+                <Route path="/explorer" element={<StockExplorerPage />} />
+                <Route path="/research" element={<ResearchAssistantPage />} />
+                <Route path="/fundamentals" element={<FundamentalsPage />} />
+                <Route path="/compare" element={<StockComparisonPage />} />
+                <Route path="/reports" element={<ResearchReportsPage />} />
+                <Route path="/news" element={<NewsIntelligencePage />} />
+                <Route path="/events" element={<MarketEventsPage />} />
+                <Route path="/watchlist" element={<WatchlistPage />} />
+                <Route path="/portfolio" element={<PortfolioPage />} />
+                <Route path="/predictive" element={<PredictiveIntelligencePage />} />
+                <Route path="/insights" element={<AIInsightsPage />} />
+                <Route path="/alerts" element={<PriceAlertsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
+      </AuthProvider>
     </BrowserRouter>
   );
 };

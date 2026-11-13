@@ -106,3 +106,4 @@ class MLDriftRecord(Base):
     __table_args__ = (
         Index("ix_ml_drifts_sym_model", "symbol", "model_name"),
     )
+
