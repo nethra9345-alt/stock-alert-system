@@ -28,7 +28,12 @@ import {
   SentimentTimelinePoint,
   NewsCorrelation,
   MarketNewsOverview,
-  NewsAlertItem
+  NewsAlertItem,
+  MultiHorizonPredictionResponse,
+  AdvancedModelComparisonResponse,
+  BacktestResultResponse,
+  ModelDriftResponse,
+  PredictionHistoryItem
 } from '../types';
 
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
@@ -252,6 +257,77 @@ export const mlApi = {
       `/ml/train/${encodeURIComponent(symbol)}`,
       null,
       { params: { period } }
+    );
+    return res.data;
+  },
+
+  getMultiHorizonPrediction: async (
+    symbol: string,
+    horizon: string = '1d'
+  ): Promise<MultiHorizonPredictionResponse> => {
+    const res = await api.get<MultiHorizonPredictionResponse>(
+      `/ml/predict/${encodeURIComponent(symbol)}`,
+      { params: { horizon } }
+    );
+    return res.data;
+  },
+
+  getAdvancedEvaluation: async (
+    symbol: string,
+    horizon: string = '1d',
+    period: string = '2y'
+  ): Promise<ModelComparisonResponse> => {
+    const res = await api.get<ModelComparisonResponse>(
+      `/ml/evaluate/${encodeURIComponent(symbol)}`,
+      { params: { horizon, period } }
+    );
+    return res.data;
+  },
+
+  trainAdvancedModels: async (
+    symbol: string,
+    horizon: string = '1d',
+    period: string = '2y'
+  ): Promise<ModelComparisonResponse> => {
+    const res = await api.post<ModelComparisonResponse>(
+      `/ml/train/${encodeURIComponent(symbol)}`,
+      null,
+      { params: { horizon, period } }
+    );
+    return res.data;
+  },
+
+  getBacktest: async (
+    symbol: string,
+    horizon: string = '1d',
+    modelName: string = 'champion',
+    period: string = '2y'
+  ): Promise<BacktestResultResponse> => {
+    const res = await api.get<BacktestResultResponse>(
+      `/ml/backtest/${encodeURIComponent(symbol)}`,
+      { params: { horizon, model_name: modelName, period } }
+    );
+    return res.data;
+  },
+
+  getDrift: async (
+    symbol: string,
+    modelName: string = 'champion'
+  ): Promise<ModelDriftResponse> => {
+    const res = await api.get<ModelDriftResponse>(
+      `/ml/drift/${encodeURIComponent(symbol)}`,
+      { params: { model_name: modelName } }
+    );
+    return res.data;
+  },
+
+  getPredictionHistory: async (
+    symbol: string,
+    limit: number = 50
+  ): Promise<PredictionHistoryItem[]> => {
+    const res = await api.get<PredictionHistoryItem[]>(
+      `/ml/prediction-history/${encodeURIComponent(symbol)}`,
+      { params: { limit } }
     );
     return res.data;
   },

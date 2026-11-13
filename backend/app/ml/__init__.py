@@ -1,7 +1,9 @@
 """StockPulse AI Machine Learning Module."""
 from backend.app.ml.features import (
     prepare_features,
+    prepare_advanced_features,
     FEATURE_COLUMNS,
+    ADVANCED_FEATURE_COLUMNS,
     InsufficientDataError
 )
 from backend.app.ml.engine import (

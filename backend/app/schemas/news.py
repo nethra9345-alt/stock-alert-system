@@ -92,3 +92,4 @@ class NewsAlertResponse(BaseModel):
     message: str
     status: str
     created_at: Optional[str] = None
+

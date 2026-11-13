@@ -203,9 +203,10 @@ export interface ModelMetric {
 export interface ModelEvaluationSummary {
   model_name: string;
   description: string;
-  test_metrics: ModelMetric;
-  walk_forward_metrics?: ModelMetric;
+  test_metrics: ModelMetric | any;
+  walk_forward_metrics?: ModelMetric | any;
   feature_importances?: Record<string, number>;
+  is_champion?: boolean;
 }
 
 export interface ModelComparisonResponse {
@@ -217,6 +218,9 @@ export interface ModelComparisonResponse {
   models: Record<string, ModelEvaluationSummary>;
   best_model_by_mae: string;
   best_model_by_directional_accuracy: string;
+  horizon?: string;
+  champion_model?: string;
+  champion_rationale?: string;
   disclaimer: string;
 }
 
@@ -224,10 +228,145 @@ export interface ModelInfoResponse {
   architecture: string;
   supported_models: string[];
   features_used: string[];
+  advanced_features_used?: string[];
   validation_strategy: string;
   metrics: string[];
   data_leakage_safeguards: string[];
   disclaimer: string;
+}
+
+// --- Stage 9: Advanced Predictive Intelligence Types ---
+
+export interface AdvancedModelMetrics {
+  mae: number;
+  rmse: number;
+  mape: number;
+  directional_accuracy: number;
+  precision_up: number;
+  recall_up: number;
+  f1_up: number;
+  sample_count: number;
+}
+
+export interface ModelEvaluationDetail {
+  model_name: string;
+  description?: string;
+  test_metrics: AdvancedModelMetrics;
+  walk_forward_metrics?: AdvancedModelMetrics;
+  is_champion?: boolean;
+  feature_importances?: Record<string, number>;
+}
+
+export interface AdvancedModelComparisonResponse {
+  symbol: string;
+  horizon: string;
+  train_date_range: string;
+  test_date_range: string;
+  train_samples: number;
+  test_samples: number;
+  models: Record<string, ModelEvaluationDetail>;
+  champion_model: string;
+  champion_rationale: string;
+  best_model_by_mae?: string;
+  best_model_by_directional_accuracy?: string;
+  disclaimer: string;
+}
+
+export interface MultiHorizonPredictionItem {
+  predicted_price: number;
+  predicted_return_pct: number;
+  predicted_direction: 'UP' | 'DOWN' | 'FLAT' | string;
+  lower_bound_80: number;
+  upper_bound_80: number;
+  lower_bound_95: number;
+  upper_bound_95: number;
+  model_mae: number;
+  directional_accuracy_hist: number;
+  is_champion?: boolean;
+}
+
+export interface MultiHorizonPredictionResponse {
+  symbol: string;
+  horizon: '1d' | '5d' | '10d' | string;
+  current_price: number;
+  as_of_date: string;
+  target_date: string;
+  predictions: Record<string, MultiHorizonPredictionItem>;
+  champion_model: string;
+  champion_predicted_price: number;
+  champion_predicted_direction: string;
+  champion_predicted_return_pct: number;
+  lower_bound: number;
+  upper_bound: number;
+  confidence_level: 'LOW' | 'MODERATE' | 'HIGH' | string;
+  uncertainty_explanation: string;
+  disclaimer: string;
+}
+
+export interface BacktestRegimeMetrics {
+  regime: string;
+  samples: number;
+  mae: number;
+  directional_accuracy: number;
+}
+
+export interface EquityCurvePoint {
+  date: string;
+  equity: number;
+  benchmark: number;
+}
+
+export interface BacktestResultResponse {
+  symbol: string;
+  model_name: string;
+  horizon: string;
+  total_steps: number;
+  wf_mae: number;
+  wf_rmse: number;
+  wf_directional_accuracy: number;
+  simulated_return_pct: number;
+  max_drawdown: number;
+  win_rate: number;
+  profit_factor?: number;
+  regime_breakdown: BacktestRegimeMetrics[];
+  error_distribution: {
+    mean_error: number;
+    std_error: number;
+    p5: number;
+    p50: number;
+    p95: number;
+  };
+  equity_curve: EquityCurvePoint[];
+  disclaimer: string;
+}
+
+export interface ModelDriftResponse {
+  symbol: string;
+  model_name: string;
+  evaluated_at: string;
+  baseline_mae: number;
+  recent_mae: number;
+  drift_ratio: number;
+  drift_status: 'STABLE' | 'MODERATE_DRIFT' | 'HIGH_DRIFT' | string;
+  retrain_recommended: boolean;
+  recommendation_text: string;
+  feature_shifts?: Record<string, number>;
+}
+
+export interface PredictionHistoryItem {
+  id: number;
+  symbol: string;
+  model_name: string;
+  horizon: string;
+  prediction_date: string;
+  target_date: string;
+  current_price: number;
+  predicted_price: number;
+  lower_bound: number;
+  upper_bound: number;
+  actual_price?: number | null;
+  absolute_error?: number | null;
+  direction_matched?: boolean | null;
 }
 
 export interface HealthResponse {

@@ -6,6 +6,7 @@ from backend.app.models.alert import PriceAlert, AlertHistory, AlertPreferences
 from backend.app.models.event import MarketEvent
 from backend.app.models.research import ResearchReport, ResearchChatMessage
 from backend.app.models.news import FinancialNews, NewsSentiment, CompanySentimentDaily, NewsAlert
+from backend.app.models.ml_registry import MLModelRegistry, MLPredictionRecord, MLBacktestRun, MLDriftRecord
 
 __all__ = [
     "Base",
@@ -22,4 +23,8 @@ __all__ = [
     "NewsSentiment",
     "CompanySentimentDaily",
     "NewsAlert",
+    "MLModelRegistry",
+    "MLPredictionRecord",
+    "MLBacktestRun",
+    "MLDriftRecord",
 ]

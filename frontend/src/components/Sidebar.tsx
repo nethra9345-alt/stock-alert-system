@@ -36,6 +36,7 @@ const navItems = [
   { to: '/events', label: 'Market Events', icon: Zap },
   { to: '/watchlist', label: 'Watchlist', icon: Bookmark },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
+  { to: '/predictive', label: 'Predictive Intel', icon: Activity },
   { to: '/insights', label: 'AI Insights', icon: BrainCircuit },
   { to: '/alerts', label: 'Price Alerts', icon: BellRing },
   { to: '/settings', label: 'Settings', icon: Settings },

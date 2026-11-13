@@ -94,3 +94,4 @@ class NewsAlert(Base):
 
     user = relationship("User", backref="news_alerts")
     news = relationship("FinancialNews", back_populates="alerts")
+

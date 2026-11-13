@@ -268,3 +268,4 @@ def analyze_news_price_correlation(
         "detected_market_events": detected_events,
         "correlation_disclaimer": "Temporal proximity between news publication and price movement does not establish statistical causation. Other market and sector factors may have contributed.",
     }
+

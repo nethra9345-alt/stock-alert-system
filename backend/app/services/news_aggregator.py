@@ -280,3 +280,4 @@ def refresh_news_for_tracked_stocks(
         "synced_counts": synced_by_symbol,
         "refreshed_at": datetime.utcnow().isoformat() + "Z",
     }
+

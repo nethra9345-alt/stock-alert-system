@@ -123,3 +123,4 @@ def downgrade() -> None:
     op.drop_table("company_sentiment_daily")
     op.drop_table("news_sentiment")
     op.drop_table("financial_news")
+

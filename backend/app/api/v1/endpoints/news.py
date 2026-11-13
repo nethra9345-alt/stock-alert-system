@@ -283,3 +283,4 @@ def get_news_detail_endpoint(
         ns = analyze_and_persist_news_sentiment(db=db, news_id=news_id, target_symbol=fn.symbol)
 
     return _format_news_item(fn, ns)
+

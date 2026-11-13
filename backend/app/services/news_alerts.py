@@ -148,3 +148,4 @@ def get_user_news_alerts(
         }
         for a in alerts
     ]
+
