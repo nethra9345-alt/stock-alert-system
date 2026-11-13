@@ -1,5 +1,5 @@
 """
-StockPulse AI - Stage 11 College Project Demonstration Deployment Verification
+StockPulse AI - Stage 11.1 Demonstration Deployment Verification Suite
 Tests all critical live endpoints through Nginx at http://localhost.
 Verifies:
 1. Web SPA root (200 OK)
@@ -10,9 +10,12 @@ Verifies:
 6. Profile retrieval (/api/auth/me)
 7. Watchlist retrieval (/api/watchlist)
 8. Portfolio analytics (/api/portfolio)
-9. Market events (/api/market/events)
-10. Token Refresh with CSRF protection (/api/auth/refresh)
-11. Secure Logout (/api/auth/logout)
+9. Market events (/api/events)
+10. ML models & quantitative forecasting (/api/ml/models)
+11. Financial news intelligence (/api/news)
+12. AI stock research dossier (/api/research/RELIANCE.NS)
+13. Token Refresh with CSRF protection (/api/auth/refresh)
+14. Secure Logout (/api/auth/logout)
 """
 import sys
 import httpx
@@ -20,16 +23,15 @@ import httpx
 BASE_URL = "http://localhost"
 
 def run_verification():
-    print("=" * 70)
-    print("StockPulse AI - Stage 11 Live Deployment Verification Suite")
-    print(f"Target URL: {BASE_URL}")
-    print("=" * 70)
+    print("=" * 75)
+    print("StockPulse AI - Stage 11.1 Live Deployment Verification Suite")
+    print(f"Target Gateway: {BASE_URL}")
+    print("=" * 75)
 
-    client = httpx.Client(base_url=BASE_URL, timeout=10.0, follow_redirects=True)
-    all_passed = True
+    client = httpx.Client(base_url=BASE_URL, timeout=15.0, follow_redirects=True)
 
     # 1. Test Static React Frontend
-    print("\n[1/11] Testing Frontend SPA Root (http://localhost/)...")
+    print("\n[1/14] Testing Frontend SPA Root (http://localhost/)...")
     res = client.get("/")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     assert "<!doctype html>" in res.text.lower() or "<html" in res.text.lower(), "HTML markup missing"
@@ -37,23 +39,23 @@ def run_verification():
     print("  --> PASS: React SPA served with security headers (200 OK).")
 
     # 2. Test Backend Health Check
-    print("\n[2/11] Testing Health Check (http://localhost/api/health)...")
+    print("\n[2/14] Testing Health Check (http://localhost/api/health)...")
     res = client.get("/api/health")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     health = res.json()
     assert health["status"] == "online", f"Expected online, got {health['status']}"
     assert health["database"]["status"] == "connected", "Database not connected"
     assert health["database"]["database_type"] == "postgresql", "Database type is not postgresql"
-    print(f"  --> PASS: Health Check Online | DB: {health['database']['database_type']} (Latency: {health['database']['latency_ms']}ms) | Tables: {len(health['database']['verified_tables'])}")
+    print(f"  --> PASS: Health Check Online | DB: {health['database']['database_type']} (Latency: {health['database']['latency_ms']}ms) | Verified Tables: {len(health['database']['verified_tables'])}")
 
     # 3. Test Swagger Docs
-    print("\n[3/11] Testing Swagger Documentation (http://localhost/docs)...")
+    print("\n[3/14] Testing Swagger Documentation (http://localhost/docs)...")
     res = client.get("/docs")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     print("  --> PASS: Swagger UI active on http://localhost/docs (200 OK).")
 
     # 4. Test OpenAPI Specification
-    print("\n[4/11] Testing OpenAPI Spec (http://localhost/openapi.json)...")
+    print("\n[4/14] Testing OpenAPI Spec (http://localhost/openapi.json)...")
     res = client.get("/openapi.json")
     assert res.status_code == 200, f"Expected 200, got {res.status_code}"
     openapi = res.json()
@@ -61,7 +63,7 @@ def run_verification():
     print(f"  --> PASS: OpenAPI spec valid: {openapi['info']['title']} v{openapi['info']['version']} ({len(openapi['paths'])} routes)")
 
     # 5. Test Demo Login
-    print("\n[5/11] Testing Demo Login (/api/auth/login as trader_pro)...")
+    print("\n[5/14] Testing Demo Login (/api/auth/login as trader_pro)...")
     login_payload = {
         "username_or_email": "trader_pro",
         "password": "TraderPass@2026"
@@ -78,7 +80,7 @@ def run_verification():
     print(f"  --> PASS: Authenticated user '{user['username']}' (ID: {user['id']}) | Access token generated.")
 
     # 6. Test Authenticated User Profile
-    print("\n[6/11] Testing Profile Retrieval (/api/auth/me)...")
+    print("\n[6/14] Testing Profile Retrieval (/api/auth/me)...")
     headers = {"Authorization": f"Bearer {access_token}"}
     res = client.get("/api/auth/me", headers=headers)
     assert res.status_code == 200, f"Profile failed: {res.status_code} {res.text}"
@@ -87,29 +89,51 @@ def run_verification():
     print(f"  --> PASS: Profile verified: {profile['full_name']} ({profile['email']})")
 
     # 7. Test Watchlist Retrieval
-    print("\n[7/11] Testing Watchlist (/api/watchlist)...")
+    print("\n[7/14] Testing Watchlist (/api/watchlist)...")
     res = client.get("/api/watchlist", headers=headers)
     assert res.status_code == 200, f"Watchlist failed: {res.status_code} {res.text}"
     watchlist = res.json()
     print(f"  --> PASS: User Watchlist retrieved: {len(watchlist)} stocks.")
 
     # 8. Test Portfolio Analytics
-    print("\n[8/11] Testing Portfolio (/api/portfolio)...")
+    print("\n[8/14] Testing Portfolio (/api/portfolio)...")
     res = client.get("/api/portfolio", headers=headers)
     assert res.status_code == 200, f"Portfolio failed: {res.status_code} {res.text}"
     portfolio = res.json()
     print(f"  --> PASS: Portfolio retrieved: Total Invested: ₹{portfolio.get('total_invested', 0):,.2f} | Current Value: ₹{portfolio.get('current_value', 0):,.2f}")
 
     # 9. Test Market Events
-    print("\n[9/11] Testing Market Events (/api/events)...")
+    print("\n[9/14] Testing Market Events (/api/events)...")
     res = client.get("/api/events", headers=headers)
     assert res.status_code == 200, f"Market events failed: {res.status_code} {res.text}"
     events = res.json()
     print(f"  --> PASS: Market events retrieved: {len(events)} events found.")
 
-    # 10. Test Refresh Token Rotation & CSRF Protection
-    print("\n[10/11] Testing Token Refresh with CSRF (/api/auth/refresh)...")
-    # client has cookies saved from login (stockpulse_refresh_token and stockpulse_csrf_token)
+    # 10. Test ML Forecasting & Models Info
+    print("\n[10/14] Testing ML Forecasting Engine (/api/ml/models)...")
+    res = client.get("/api/ml/models", headers=headers)
+    assert res.status_code == 200, f"ML models failed: {res.status_code} {res.text}"
+    ml_models = res.json()
+    assert len(ml_models.get("supported_models", [])) >= 4
+    print(f"  --> PASS: ML Quantitative Models active: {len(ml_models['supported_models'])} algorithms ({', '.join(ml_models['supported_models'][:2])}...)")
+
+    # 11. Test Financial News Intelligence
+    print("\n[11/14] Testing Financial News Intelligence (/api/news)...")
+    res = client.get("/api/news", headers=headers)
+    assert res.status_code == 200, f"News failed: {res.status_code} {res.text}"
+    news = res.json()
+    print(f"  --> PASS: Financial News Feed retrieved: {news.get('total', len(news.get('items', [])))} articles.")
+
+    # 12. Test AI Research Dossier
+    print("\n[12/14] Testing AI Research Dossier (/api/research/RELIANCE.NS)...")
+    res = client.get("/api/research/RELIANCE.NS", headers=headers)
+    assert res.status_code == 200, f"Research failed: {res.status_code} {res.text}"
+    dossier = res.json()
+    assert dossier.get("symbol") == "RELIANCE.NS"
+    print(f"  --> PASS: AI Research Dossier loaded: {dossier.get('symbol')} ({dossier.get('company_name', 'Reliance Industries')})")
+
+    # 13. Test Refresh Token Rotation & CSRF Protection
+    print("\n[13/14] Testing Token Refresh with CSRF (/api/auth/refresh)...")
     refresh_headers = {
         "X-CSRF-Token": csrf_token
     }
@@ -120,8 +144,8 @@ def run_verification():
     assert new_access_token, "No new access token returned"
     print(f"  --> PASS: Token refresh successful with CSRF verification and refresh rotation.")
 
-    # 11. Test Secure Logout
-    print("\n[11/11] Testing Secure Logout (/api/auth/logout)...")
+    # 14. Test Secure Logout
+    print("\n[14/14] Testing Secure Logout (/api/auth/logout)...")
     logout_headers = {
         "Authorization": f"Bearer {new_access_token}",
         "X-CSRF-Token": refresh_data.get("csrf_token") or csrf_token
@@ -130,9 +154,9 @@ def run_verification():
     assert res.status_code == 200, f"Logout failed: {res.status_code} {res.text}"
     print(f"  --> PASS: Logout successful; session invalidated.")
 
-    print("\n" + "=" * 70)
-    print("ALL 11 DEPLOYMENT CHECKS PASSED PERFECTLY ON http://localhost!")
-    print("=" * 70)
+    print("\n" + "=" * 75)
+    print("ALL 14 LIVE DEPLOYMENT SUBSYSTEMS PASSED PERFECTLY ON http://localhost!")
+    print("=" * 75)
 
 if __name__ == "__main__":
     try:

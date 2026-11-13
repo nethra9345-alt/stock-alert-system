@@ -93,11 +93,50 @@ In front of the examiner, run the automated verification script:
 ```powershell
 backend\venv\Scripts\python.exe scripts\verify_demo_deployment.py
 ```
-This tests all 11 live subsystems over `http://localhost` in under 15 seconds.
+This tests all 14 live subsystems over `http://localhost` in under 15 seconds.
 
 ---
 
-## 4. Demonstration Accounts & User Personas
+## 4. Network Configuration & Windows Host Security (Stage 11.1)
+
+To connect the containerized backend to native Windows PostgreSQL without creating a redundant database container or exposing database ports to public networks, the following configuration is enforced:
+
+### 1. Docker Bridge Resolution (`host.docker.internal`)
+- The `docker-compose.yml` backend service includes:
+  ```yaml
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  ```
+- This resolves `host.docker.internal` to the WSL2/Docker virtual network gateway IP (e.g. `192.168.65.254` or `172.17.0.1`), allowing outbound container TCP connections to reach port 5432 on the host.
+
+### 2. PostgreSQL Configuration (`postgresql.conf` & `pg_hba.conf`)
+- In `C:\Program Files\PostgreSQL\18\data\postgresql.conf`:
+  ```ini
+  listen_addresses = '*'
+  ```
+  *(Allows PostgreSQL to bind to local loopback and the Docker virtual interface).*
+- In `C:\Program Files\PostgreSQL\18\data\pg_hba.conf`:
+  ```text
+  # TYPE  DATABASE        USER            ADDRESS                 METHOD
+  # Local host connections:
+  host    stockpulse      all             127.0.0.1/32            scram-sha-256
+  host    stockpulse      all             ::1/128                 scram-sha-256
+  # Docker bridge subnets only (never 0.0.0.0/0):
+  host    stockpulse      all             172.16.0.0/12           scram-sha-256
+  host    stockpulse      all             192.168.0.0/16          scram-sha-256
+  ```
+
+### 3. Windows Defender Firewall Policy
+- Port 5432 is **NEVER** exposed to Public networks.
+- A scoped inbound firewall rule restricts port 5432 strictly to `Domain` and `Private` profiles and local Docker adapter subnets:
+  ```powershell
+  # Verify port 5432 firewall rule scope:
+  Get-NetFirewallRule -DisplayName "*PostgreSQL*" | Select-Object Name, Profile, Enabled, Action
+  ```
+
+---
+
+## 5. Demonstration Accounts & User Personas
 
 | Role | Username / Email | Password | Access & Features |
 | :--- | :--- | :--- | :--- |
@@ -106,7 +145,7 @@ This tests all 11 live subsystems over `http://localhost` in under 15 seconds.
 
 ---
 
-## 5. College Viva Walkthrough & Demonstration Script
+## 6. College Viva Walkthrough & Demonstration Script
 
 ### Segment 1: System Health & Architecture (2 mins)
 1. Navigate to `http://localhost/api/health` in browser.
@@ -154,7 +193,7 @@ This tests all 11 live subsystems over `http://localhost` in under 15 seconds.
 
 ---
 
-## 6. Frequently Asked Viva Questions & Answers
+## 7. Frequently Asked Viva Questions & Answers
 
 ### Q1: Why did you run the application in Docker instead of standard local processes?
 > **Answer**: Docker Compose provides containerized isolation, ensuring reproducibility across environments regardless of host operating system quirks. It mirrors production deployment architectures with an Nginx reverse proxy fronting an ASGI backend, while isolating application dependencies from the host system.
@@ -173,7 +212,7 @@ This tests all 11 live subsystems over `http://localhost` in under 15 seconds.
 
 ---
 
-## 7. Teardown & Maintenance
+## 8. Teardown & Maintenance
 
 To stop the demonstration deployment cleanly:
 ```bash
@@ -190,3 +229,4 @@ To view live container logs during the demo:
 docker compose logs -f backend
 docker compose logs -f frontend
 ```
+

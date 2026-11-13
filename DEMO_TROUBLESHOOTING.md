@@ -162,3 +162,4 @@ docker compose up -d
 # 3. Wait 10 seconds and test health
 curl.exe -s http://localhost/api/health
 ```
+
