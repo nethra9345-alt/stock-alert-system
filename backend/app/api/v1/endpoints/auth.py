@@ -95,7 +95,25 @@ def verify_csrf_if_cookie_auth(request: Request):
             )
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+def is_cookie_auth_request(request: Request) -> bool:
+    """
+    Determines whether cookie-based session management is active or requested (Stage 12.2).
+    - Returns True if explicit header 'X-Auth-Mode: cookie' is sent.
+    - Returns True if browser origin headers ('Origin', 'Referer', 'Sec-Fetch-Mode') are present
+      and 'X-Auth-Mode' != 'token'.
+    - Returns False if 'X-Auth-Mode: token' is sent, or for programmatic API/CLI clients without browser origin headers.
+    """
+    mode = request.headers.get("X-Auth-Mode", "").strip().lower()
+    if mode == "token":
+        return False
+    if mode == "cookie":
+        return True
+    if request.headers.get("origin") or request.headers.get("sec-fetch-mode") or request.headers.get("referer"):
+        return True
+    return False
+
+
+@router.post("/register", response_model=TokenResponse, response_model_exclude_unset=True, status_code=status.HTTP_201_CREATED)
 def register_user(
     req: Request,
     resp: Response,
@@ -148,17 +166,21 @@ def register_user(
     # 5. Set HttpOnly, SameSite, Secure cookie & CSRF cookie
     csrf_token = set_auth_cookies(response=resp, request=req, refresh_token=refresh_token_data.token)
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token_data.token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserResponse.model_validate(new_user),
-        csrf_token=csrf_token
-    )
+    resp_kwargs = {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": UserResponse.model_validate(new_user),
+        "csrf_token": csrf_token,
+    }
+    # When cookie auth is active, do not include the raw refresh token in response JSON body (Stage 12.2)
+    if not is_cookie_auth_request(req):
+        resp_kwargs["refresh_token"] = refresh_token_data.token
+
+    return TokenResponse(**resp_kwargs)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, response_model_exclude_unset=True)
 def login_user(
     req: Request,
     resp: Response,
@@ -209,14 +231,18 @@ def login_user(
     # Set HttpOnly & CSRF cookies
     csrf_token = set_auth_cookies(response=resp, request=req, refresh_token=refresh_token_data.token)
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token_data.token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserResponse.model_validate(user),
-        csrf_token=csrf_token
-    )
+    resp_kwargs = {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": UserResponse.model_validate(user),
+        "csrf_token": csrf_token,
+    }
+    # When cookie auth is active, do not include the raw refresh token in response JSON body (Stage 12.2)
+    if not is_cookie_auth_request(req):
+        resp_kwargs["refresh_token"] = refresh_token_data.token
+
+    return TokenResponse(**resp_kwargs)
 
 
 @router.post("/refresh", response_model=Dict[str, Any])
@@ -257,13 +283,17 @@ def refresh_access_token(
     # 4. Set rotated HttpOnly cookie & new CSRF token
     csrf_token = set_auth_cookies(response=resp, request=req, refresh_token=new_refresh_data.token)
 
-    return {
+    resp_data = {
         "access_token": new_access_token,
-        "refresh_token": new_refresh_data.token,
         "token_type": "bearer",
         "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "csrf_token": csrf_token
+        "csrf_token": csrf_token,
     }
+    # Only include raw refresh token in body if request explicitly used body token (Stage 12.2)
+    if body_token:
+        resp_data["refresh_token"] = new_refresh_data.token
+
+    return resp_data
 
 
 @router.get("/me", response_model=UserResponse)

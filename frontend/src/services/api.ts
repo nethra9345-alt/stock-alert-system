@@ -41,6 +41,28 @@ import {
 // Use VITE_API_BASE_URL if configured, otherwise default to '/api' for Vite dev proxy
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api';
 
+// --- In-Memory Access Token Storage (Stage 12.3 Hardening) ---
+// Access tokens are strictly stored in application memory to prevent XSS extraction from localStorage
+let inMemoryAccessToken: string | null = null;
+type TokenListener = (token: string | null) => void;
+let tokenListeners: TokenListener[] = [];
+
+export const getAccessToken = (): string | null => {
+  return inMemoryAccessToken;
+};
+
+export const setAccessToken = (token: string | null) => {
+  inMemoryAccessToken = token;
+  tokenListeners.forEach((fn) => fn(token));
+};
+
+export const onTokenChange = (listener: TokenListener) => {
+  tokenListeners.push(listener);
+  return () => {
+    tokenListeners = tokenListeners.filter((l) => l !== listener);
+  };
+};
+
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
@@ -56,9 +78,56 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+// Single in-flight refresh promise to prevent duplicate simultaneous refresh requests
+let refreshPromise: Promise<string> | null = null;
+
+export const refreshAuthToken = async (): Promise<string> => {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const csrfToken = getCookie('stockpulse_csrf_token');
+      const refreshRes = await axios.post<{ access_token: string }>(
+        `${API_BASE_URL}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+        }
+      );
+      const newToken = refreshRes.data.access_token;
+      setAccessToken(newToken);
+      api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+      return newToken;
+    } catch (err) {
+      setAccessToken(null);
+      // Purge any legacy storage keys
+      localStorage.removeItem('stockpulse_access_token');
+      sessionStorage.removeItem('stockpulse_access_token');
+      localStorage.removeItem('stockpulse_user');
+      throw err;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
 // Attach Authorization Bearer token & CSRF protection to outgoing requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('stockpulse_access_token') || sessionStorage.getItem('stockpulse_access_token');
+api.interceptors.request.use(async (config) => {
+  // If a token refresh is currently in flight, await it before dispatching
+  if (refreshPromise) {
+    try {
+      await refreshPromise;
+    } catch {
+      // Refresh failed; proceed and let backend reject if unauthenticated
+    }
+  }
+
+  const token = getAccessToken();
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -88,9 +157,15 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('/auth/login') &&
+      !originalRequest.url?.includes('/auth/register')
+    ) {
       if (originalRequest.url?.includes('/auth/refresh')) {
-        // Refresh itself failed - purge tokens
+        // Refresh itself failed - purge in-memory token
+        setAccessToken(null);
         localStorage.removeItem('stockpulse_access_token');
         sessionStorage.removeItem('stockpulse_access_token');
         localStorage.removeItem('stockpulse_user');
@@ -112,26 +187,12 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const csrfToken = getCookie('stockpulse_csrf_token');
-        const refreshRes = await axios.post<{ access_token: string }>(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-            headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
-          }
-        );
-        const newToken = refreshRes.data.access_token;
-        localStorage.setItem('stockpulse_access_token', newToken);
-        api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+        const newToken = await refreshAuthToken();
         processQueue(null, newToken);
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        localStorage.removeItem('stockpulse_access_token');
-        sessionStorage.removeItem('stockpulse_access_token');
-        localStorage.removeItem('stockpulse_user');
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
@@ -625,10 +686,17 @@ export const authApi = {
   },
 
   refresh: async (refreshToken?: string): Promise<{ access_token: string; expires_in: number }> => {
-    const res = await api.post<{ access_token: string; expires_in: number }>('/auth/refresh', {
-      refresh_token: refreshToken || undefined,
-    });
-    return res.data;
+    if (refreshToken) {
+      const res = await api.post<{ access_token: string; expires_in: number }>('/auth/refresh', {
+        refresh_token: refreshToken,
+      });
+      if (res.data?.access_token) {
+        setAccessToken(res.data.access_token);
+      }
+      return res.data;
+    }
+    const token = await refreshAuthToken();
+    return { access_token: token, expires_in: 900 };
   },
 
   getMe: async (): Promise<UserProfile> => {
@@ -637,8 +705,15 @@ export const authApi = {
   },
 
   logout: async (): Promise<{ status: string; message: string }> => {
-    const res = await api.post<{ status: string; message: string }>('/auth/logout');
-    return res.data;
+    try {
+      const res = await api.post<{ status: string; message: string }>('/auth/logout');
+      return res.data;
+    } finally {
+      setAccessToken(null);
+      localStorage.removeItem('stockpulse_access_token');
+      sessionStorage.removeItem('stockpulse_access_token');
+      localStorage.removeItem('stockpulse_user');
+    }
   },
 };
 

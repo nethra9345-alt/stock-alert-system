@@ -383,10 +383,11 @@ export interface UserProfile {
 
 export interface AuthTokenResponse {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string;
   token_type: string;
   expires_in: number;
   user: UserProfile;
+  csrf_token?: string;
 }
 
 

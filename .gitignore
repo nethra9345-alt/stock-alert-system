@@ -32,11 +32,12 @@ htmlcov/
 .tox/
 .nox/
 
-# Database
+# Database & Backups
 *.db
 *.sqlite
 *.sqlite3
 *.dump
+*.bundle
 
 # Environment
 .env
@@ -59,6 +60,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+*.bak
+scratch/
+*credential*
 
 # Logs
 logs/

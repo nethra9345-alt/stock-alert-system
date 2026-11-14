@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, model_validator
 
 # Project Directories
 BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -41,14 +41,31 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_PER_MINUTE: int = 20
     MAX_REQUEST_SIZE_BYTES: int = 10 * 1024 * 1024
 
-    # Security Hardening Flags (Stage 10.1)
-    ALLOW_LEGACY_HEADER_AUTH: bool = True  # Allows X-User-Id in development/test only
+    # Security Hardening Flags (Stage 10.1 & 12.2)
+    ALLOW_LEGACY_HEADER_AUTH: bool = False  # Disabled by default; strictly isolated to legacy tests
     ALLOW_DEMO_ACCOUNTS: bool = True       # Allows demo login in development/test only
-    ALLOW_DEFAULT_USER_FALLBACK: bool = True  # Allows fallback to user 1 in dev/test only
+    ALLOW_DEFAULT_USER_FALLBACK: bool = False  # Disabled by default; unauthenticated requests are rejected
     SECURE_COOKIES: bool = False           # Set True in production (HTTPS)
     CSRF_PROTECTION_ENABLED: bool = True   # Requires X-CSRF-Token matching CSRF cookie
     ENABLE_DOCS_IN_PRODUCTION: bool = False  # Hides /docs and /openapi.json in production
     REDIS_URL: Optional[str] = None        # Optional Redis connection URL for multi-worker distributed rate-limiting
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        """Enforces strong, non-default cryptographic secrets in production mode (Stage 12.2)."""
+        if self.is_production:
+            insecure_defaults = {
+                "stockpulse-dev-secret-key-replace-in-production-with-env-variable",
+                "secret",
+                "changeme",
+                "password",
+            }
+            key = (self.JWT_SECRET_KEY or "").strip()
+            if not key or key in insecure_defaults or len(key) < 32:
+                raise ValueError(
+                    "Production security violation: JWT_SECRET_KEY must be a secure, non-default string of at least 32 characters when ENVIRONMENT=production."
+                )
+        return self
 
     @property
     def is_production(self) -> bool:

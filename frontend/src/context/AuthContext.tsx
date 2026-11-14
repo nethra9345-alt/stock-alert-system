@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, AuthTokenResponse } from '../types';
-import { authApi } from '../services/api';
+import { authApi, setAccessToken, onTokenChange, refreshAuthToken } from '../services/api';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -24,26 +24,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('stockpulse_access_token');
-  });
-
+  // Access token is held strictly in application memory (Stage 12.3 Hardening)
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Synchronize in-memory token state from API refresh and rotation events
+  useEffect(() => {
+    const unsubscribe = onTokenChange((newToken) => {
+      setToken(newToken);
+      if (!newToken) {
+        setUser(null);
+        localStorage.removeItem('stockpulse_user');
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Restore session after page reload using existing HttpOnly refresh cookie & CSRF double-submit
   useEffect(() => {
     const verifySession = async () => {
-      const storedToken = localStorage.getItem('stockpulse_access_token');
-      if (storedToken) {
-        try {
-          const profile = await authApi.getMe();
-          setUser(profile);
-          localStorage.setItem('stockpulse_user', JSON.stringify(profile));
-        } catch (err) {
-          console.warn('Session verification failed, clearing expired credentials');
-          logout();
-        }
+      try {
+        // Attempt session restoration via HttpOnly refresh cookie
+        await refreshAuthToken();
+        const profile = await authApi.getMe();
+        setUser(profile);
+        localStorage.setItem('stockpulse_user', JSON.stringify(profile));
+      } catch {
+        // No active or valid session; reset state cleanly
+        setAccessToken(null);
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('stockpulse_user');
+        localStorage.removeItem('stockpulse_access_token');
+        sessionStorage.removeItem('stockpulse_access_token');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     verifySession();
@@ -51,26 +67,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (credentials: { username_or_email: string; password: string }) => {
     const res: AuthTokenResponse = await authApi.login(credentials);
+    // Store access token ONLY in memory
+    setAccessToken(res.access_token);
     setToken(res.access_token);
     setUser(res.user);
-    localStorage.setItem('stockpulse_access_token', res.access_token);
-    // Refresh token is stored in HttpOnly cookie; never stored in JavaScript-accessible storage
-    localStorage.removeItem('stockpulse_refresh_token');
     localStorage.setItem('stockpulse_user', JSON.stringify(res.user));
+    // Purge any legacy token storage keys
+    localStorage.removeItem('stockpulse_access_token');
+    localStorage.removeItem('stockpulse_refresh_token');
+    sessionStorage.removeItem('stockpulse_access_token');
   };
 
   const register = async (data: { email: string; username: string; password: string; full_name?: string }) => {
     const res: AuthTokenResponse = await authApi.register(data);
+    // Store access token ONLY in memory
+    setAccessToken(res.access_token);
     setToken(res.access_token);
     setUser(res.user);
-    localStorage.setItem('stockpulse_access_token', res.access_token);
-    // Refresh token is stored in HttpOnly cookie; never stored in JavaScript-accessible storage
-    localStorage.removeItem('stockpulse_refresh_token');
     localStorage.setItem('stockpulse_user', JSON.stringify(res.user));
+    // Purge any legacy token storage keys
+    localStorage.removeItem('stockpulse_access_token');
+    localStorage.removeItem('stockpulse_refresh_token');
+    sessionStorage.removeItem('stockpulse_access_token');
   };
 
   const logout = () => {
     authApi.logout().catch(() => {});
+    setAccessToken(null);
     setToken(null);
     setUser(null);
     localStorage.removeItem('stockpulse_access_token');
